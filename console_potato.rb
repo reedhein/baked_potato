@@ -80,6 +80,7 @@ class ConsolePotato
     folders.each do |path|
       path = Pathname.new(path)
       opp_id = CacheFolder.opp_id_from_path(path.to_s)
+      next if DB::SalesForceProgressRecord.first( sales_force_id: opp_id, object_type: 'Opportunity', kitten_migration_complete: true)
       query = construct_query(id: opp_id)
       opportunity = @sf_client.custom_query(query: query).first
       next unless opportunity
@@ -101,7 +102,7 @@ class ConsolePotato
         while sf_linked == false || sf_linked.nil? do 
           counter +=1
           sleep 1
-          fail('fuck this shit') if counter > 60*60*3
+          fail('fuck this shit') if counter > 60*3
         end
         case_folder_path = dest_path + sf_linked.box__folder_id__c
         case_folder_path.mkpath
