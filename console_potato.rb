@@ -17,7 +17,8 @@ class ConsolePotato
     @box_client          = Utils::Box::Client.instance
     @browser_tool        = BrowserTool.new
     @local_source_folder = Pathname.new('/Users/voodoologic/Sandbox/backup/Opportunity')
-    @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
+    # @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
+    @local_dest_folder   = Pathname.new('/home/doug/Sandbox/cache_folder')
     @do_work             = true
     @download = @cached  = 0
     @meta                = DB::Meta.first_or_create(project: project)
