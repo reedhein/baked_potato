@@ -16,9 +16,9 @@ class ConsolePotato
     @sf_client           = Utils::SalesForce::Client.instance
     @box_client          = Utils::Box::Client.instance
     @browser_tool        = BrowserTool.new
-    @local_source_folder = Pathname.new('/Users/voodoologic/Sandbox/backup/Opportunity')
-    # @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
-    @local_dest_folder   = Pathname.new('/home/doug/Sandbox/cache_folder')
+    # @local_source_folder = Pathname.new('/Users/voodoologic/Sandbox/backup/Opportunity')
+    @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
+    # @local_dest_folder   = Pathname.new('/home/doug/Sandbox/cache_folder')
     @do_work             = true
     @download = @cached  = 0
     @meta                = DB::Meta.first_or_create(project: project)
@@ -50,18 +50,14 @@ class ConsolePotato
             begin
               if work_completed?(file, dest_path)
                 next
-              elsif case_file_path = exist_locally?(opportunity, file)
-                source_file = get_local_copy(case_file_path)
-                preserve_indexed_name!(source_file, file)
               else
-                source_file = download_from_box(file)
+                source_file = download_from_box(file, dest_path )
               end
             rescue => e
               ap e.backtrace
               binding.pry
             end
             puts File.basename(source_file)
-            copy_file_to_cache_folder(dest_path, source_file)
             boxfile_db.download_complete = true
             boxfile_db.save
           end
@@ -77,10 +73,16 @@ class ConsolePotato
 
   def cases_folders
     folders = Dir.glob(CacheFolder.cache_folder + '/*')
-    folders.each do |path|
+    puts "folder count" * 10
+    puts folders.count
+    folders.each_with_index do |path, i |
+      puts i
       path = Pathname.new(path)
       opp_id = CacheFolder.opp_id_from_path(path.to_s)
-      next if DB::SalesForceProgressRecord.first( sales_force_id: opp_id, object_type: 'Opportunity', kitten_migration_complete: true)
+      if DB::SalesForceProgressRecord.first( sales_force_id: opp_id, object_type: 'Opportunity', kitten_migration_complete: true)
+        puts 'skipping ' + opp_id
+        next
+      end
       query = construct_query(id: opp_id)
       opportunity = @sf_client.custom_query(query: query).first
       next unless opportunity
@@ -140,10 +142,11 @@ class ConsolePotato
         end
         @offset_date = opportunity.created_date # creates a marker for next query
         @meta.offset_date = @offset_date
-        opportunity.mark_completed(:kitten)
         @meta.save
       end
+      opportunity.mark_completed(:kitten)
     end
+
     # cases
     #  |
     #  ⌞  public_id
@@ -215,19 +218,20 @@ class ConsolePotato
           FROM Opportunity
           WHERE id = '#{id}'
         EOF
-    elsif @offset_date
-      query = <<-EOF
-        SELECT Name, Id, createdDate,
-        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
-        FROM Opportunity
-        CreatedDate >= #{@offset_date}
-        ORDER BY CreatedDate ASC
-      EOF
     elsif name
       query = <<-EOF
         SELECT Name, Id, createdDate,
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
         (SELECT Id, Name FROM Attachments)
         FROM Opportunity WHERE Name = '#{name.gsub("'", %q(\\\'))}'
+      EOF
+    elsif @offset_date
+      query = <<-EOF
+        SELECT Name, Id, createdDate,
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r)
+        FROM Opportunity
+        CreatedDate >= #{@offset_date}
+        ORDER BY CreatedDate ASC
       EOF
     else
       fail 'need a name or id'
@@ -237,7 +241,9 @@ class ConsolePotato
 
   def update_cache_folder(opportunity, ff)
     sf_linked = query_frup(opportunity).first || initiate_folder_creation(opportunity)
-    binding.pry if sf_linked.nil?
+    if sf_linked.nil? || sf_linked == false
+      return false
+    end
     cache_path_name = [ ff.id, opportunity.id, sf_linked.box__folder_id__c ].join('_')
     path = Pathname.new(@local_dest_folder) + cache_path_name
     path.mkpath
@@ -351,7 +357,8 @@ class ConsolePotato
 
   def sf_name_from_ff_name(ff)
     begin
-      match = ff.name.match(/(.+)\ -\ Finance$/)
+      match = ff.name.match(/(.+)\ -\ Finance$/) || ff.name.match(/(.+)\ -\ (\d+)Finance/)
+      puts ff.name
       match[1]
     rescue => e
       ap e.backtrace
@@ -369,12 +376,11 @@ class ConsolePotato
     end
   end
 end
-# cp = ConsolePotato.new().process_work_queue
-# cp = ConsolePotato.new().populate_database
- cp = ConsolePotato.new().cases_folders
 
 begin
+  cp = ConsolePotato.new()
+  # cp.process_work_queue
+  cp.cases_folders
 ensure
-  binding.pry
-  # cp.browser_tool.close
+  cp.browser_tool.agents.each(&:close)
 end
