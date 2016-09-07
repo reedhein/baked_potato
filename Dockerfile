@@ -8,7 +8,7 @@ RUN apt-get install -y build-essential git bcrypt libtool openssl automake curl 
   zlib1g-dev zlib1g zlibc ruby-dev libssl-dev libyaml-dev libsqlite3-0 \
   libsqlite3-dev libxml2-dev libxslt-dev autoconf libc6-dev sqlite3 \
   libreadline-dev libreadline6 libreadline6-dev libgmp-dev libgmp3-dev \
-  ncurses-dev g++ bison gcc
+  ncurses-dev g++ bison gcc libmagickwand-dev
 
 ENV CONFIGURE_OPTS --disable-install-rdoc
 
