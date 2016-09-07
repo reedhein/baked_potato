@@ -2,7 +2,7 @@ require 'sinatra'
 require 'pry'
 require 'awesome_print'
 require 'classifier-reborn'
-require_relative '../global_utils/global_utils'
+require_relative './lib/utils'
 require_relative 'cache_folder'
 class BakedPotato < Sinatra::Base
   set env: :development
@@ -12,7 +12,7 @@ class BakedPotato < Sinatra::Base
   @box_client = Utils::Box::Client.instance
   @sf_client  = Utils::SalesForce::Client.instance
   get '/' do
-    @image     = BPImage.random_unlocked
+    @image       = BPImage.random_unlocked
     @image.lock
     @full_path   = @image.full_path.split('/')[-2..-1].join('/')
     @name        = @image.full_path.split('/')[-1]
