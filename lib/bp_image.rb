@@ -14,6 +14,7 @@ class BPImage
       DB::ImageProgressRecord.all(locked: false, complete: false, type: '.png') ||
       DB::ImageProgressRecord.all(locked: false, complete: false, type: '.jpg')
     record = records.sample
+    binding.pry unless record
     cf = CacheFolder.new(opp_id: record.opportunity_id)
     path_to_image = Pathname.new([cf.cache_folder, cf.folder, record.filename].join('/'))
     bpi = BPImage.new(path_to_image, cf)

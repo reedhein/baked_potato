@@ -3,7 +3,6 @@ require 'pry'
 require 'awesome_print'
 require 'classifier-reborn'
 require_relative './lib/utils'
-require_relative './lib/cache_folder'
 class BakedPotato < Sinatra::Base
   set env: :development
   set port: 4545

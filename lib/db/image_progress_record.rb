@@ -14,14 +14,9 @@ module DB
     property :complete,      Boolean, default: false
 
     def self.create_new_from_path(path)
-      opp_id = CacheFolder.opp_id_from_path(path)
-      cf = CacheFolder.new(opp_id: opp_id)
-      puts path
+      opp_id = path.split.last
       first_or_create(
-        public_folder:  cf.box_public,
-        private_folder: cf.box_private,
         opportunity_id: cf.opp_id,
-        type:           Pathname.new(path).extname,
         full_path:      path
       )
     end

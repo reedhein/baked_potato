@@ -14,9 +14,7 @@ class ConsolePotato
     Utils.environment    = @environment = environment
     @id                  = id
     @sf_client           = Utils::SalesForce::Client.instance
-    @box_client          = Utils::Box::Client.instance
-    @browser_tool        = BrowserTool.new
-    # @local_source_folder = Pathname.new('/Users/voodoologic/Sandbox/backup/Opportunity')
+    @box_client           = Utils::Box::Client.instance
     @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s
@@ -53,13 +51,14 @@ class ConsolePotato
               #make db
               #get box
               #get native
+            end
         end
       end
     end
   end
 
   def populate_database
-    files = Dir.glob(CacheFolder.cache_folder + '**/*').map do |d_or_f|
+    files = Dir.glob(@dated_cache_folder + '**/*').map do |d_or_f|
       Dir.glob(d_or_f + '/*')
     end.flatten.delete_if{|x| Pathname.new(x).basename == 'cases' && Pathname.new(x).extname == 'yml'}
     files.map do |x|
@@ -327,7 +326,7 @@ class ConsolePotato
     if id
       query = <<-EOF
           SELECT Name, Id, createdDate,
-          (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
+          (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c FROM cases__r),
           (SELECT Id, Name FROM Attachments)
           FROM Opportunity
           WHERE id = '#{id}'
@@ -335,14 +334,15 @@ class ConsolePotato
     elsif name
       query = <<-EOF
         SELECT Name, Id, createdDate,
-        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c FROM cases__r),
         (SELECT Id, Name FROM Attachments)
         FROM Opportunity WHERE Name = '#{name.gsub("'", %q(\\\'))}'
       EOF
     elsif @offset_date
       query = <<-EOF
         SELECT Name, Id, createdDate,
-        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r)
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c FROM cases__r),
+        (SELECT Id, Name FROM Attachments)
         FROM Opportunity
         CreatedDate >= #{@offset_date}
         ORDER BY CreatedDate ASC
@@ -387,7 +387,7 @@ class ConsolePotato
 
   def finance_folders(&block)
     @box_client.folder("7811715461").folders.select do |finance_folder|
-      yield finance_folder if block_given? && finance_folder.name !~ /$(Case Finance Template|Opportunity Finance Template)^/
+      yield finance_folder if block_given? && finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/
       finance_folder.name.match(/\d{8}\ -\ Finance$/)
     end
   end
@@ -395,7 +395,8 @@ end
 
 begin
   cp = ConsolePotato.new()
-  cp.produce_snapshot_from_scratch
+  # cp.produce_snapshot_from_scratch
+  cp.populate_database
 rescue => e
   ap e.backtrace
   binding.pry

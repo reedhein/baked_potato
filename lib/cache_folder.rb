@@ -1,7 +1,7 @@
 class CacheFolder
 
   def initialize(id)
-    @cache_folder   = self.class.cache_folder
+    @cache_folder   = Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s
     @id             = id
     @location       = find_location_by_id
     @path           = Pathname.new(@location)
@@ -69,7 +69,6 @@ class CacheFolder
 
   def self.opp_id_from_path(path)
     path = Pathname.new(path)
-    binding.pry
     case path
     when path.file?
       path
@@ -103,7 +102,7 @@ class CacheFolder
   def self.find_location_by_id(id)
     directory = Dir.glob(self.cache_folder + '**/*').detect do |entity|
       e = Pathname.new(entity)
-      e.directory? && (e.split.last.to_s.split('_')[1] =~ /#{id}/ || e.split.last.to_s =~ /$#{id}^/)
+      e.directory? && e.split.last.to_s == id
     end
     directory
   end
@@ -114,7 +113,7 @@ class CacheFolder
     fail 'no id provided' unless @id
     directory = Dir.glob(@cache_folder + '**/*').detect do |entity|
       e = Pathname.new(entity)
-      e.directory? && (e.split.last.to_s.split('_')[1] =~ /#{@id}/ || e.split.last.to_s =~ /$#{@id}^/)
+      e.directory? && e.split.last.to_s == @id
     end
     binding.pry unless directory
     directory
