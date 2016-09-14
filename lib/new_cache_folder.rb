@@ -1,38 +1,58 @@
-require 'pry'
-class CacheFolder
-  attr_reader :cache_folder, :box_public, :box_private, :cache_folder, :opp_id, :folder
-  def initialize(opp_id: '00661000005QDBqAAO')
-    @cache_folder = '/Users/voodoologic/Sandbox/cache_folder'
-    @opp_id = opp_id
-    @folder, @box_public , @box_private = get_meta_from_folder
-  end
+class NewCacheFolder < CacheFolder
+  attr_reader :cache_folder, :box_public, :box_private, :cache_folder, :id, :folder, :type, :path
 
   def self.cache_folder
     '/Users/voodoologic/Sandbox/cache_folder'
   end
 
-  def images
-    @images ||= get_images
+  def recursive_items
+    Dir.glob(@location + '**/*').map{|x| Pathname.new(x)}
   end
 
-  def self.opp_id_from_path(path)
-    match = path.match( /(?<private>\d+)_(?<opp_id>\w+)_(?<public>\d+)/ )
-    match[:opp_id]
+  def direct_items
+    @location.children
+  end
+
+  def details
+    case type
+    when :case
+      single_case_query
+    when :opportunity
+      single_opp_query
+    when :box
+      @box_client.folder(@id)
+    end
+  end
+
+  def self.cache_folder
+    Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
   end
 
   private
 
-  def get_meta_from_folder
-    match = nil
-    Dir.glob(@cache_folder + '/*').detect do |path|
-      match = path.match( /(?<private>\d+)_#{@opp_id}_(?<public>\d+)/ )
-    end
-    [match[0], match[:private], match[:public]]
+  def single_case_query
+    query = <<-EOF
+      SELECT id, name,
+      (SELECT id, name FROM Attachments)
+      FROM #{type}
+      WHERE id = '#{id}'
+    EOF
+    @sf_client.custom_query(query: query).first
+  end
+
+  def single_opp_query()
+    query = <<-EOF
+      SELECT id, name,
+      (SELECT id, name FROM Attachments)
+      FROM #{@type}
+      WHERE id = '#{@id}'
+    EOF
+    @sf_client.custom_query(query: query).first
   end
 
   def get_images
-    path_to_images = Pathname.new([@cache_folder, @folder].join('/'))
-    Dir.glob(path_to_images.to_s + '/*').select do |file|
+    path_to_images = Pathname.new(@location)
+    path_to_images.children.select do |file|
       ['.pdf', '.jpg', '.jpeg', '.png', '.gif'].include? Pathname.new(file).extname
     end.map do |image|
       BPImage.new(Pathname.new(image), self)

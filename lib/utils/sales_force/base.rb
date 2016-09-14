@@ -59,11 +59,11 @@ module Utils
           next if key.downcase == "body" && params.dig('attributes', 'type') == 'Attachment'#prevent attachment from being downloaded if we haven't checked fro presence
           if key =~/__r$/ 
             key = key.gsub(/__r$/, '')
-            if !value.nil? && value.respond_to?(:entries)
-              value = value.entries.map do |entity|
-                klass = ['Utils', 'SalesForce', entity.attributes.type].join('::').classify.constantize
-                klass.new(entity)
-              end
+          end
+          if !value.nil? && value.respond_to?(:entries)
+            value = value.entries.map do |entity|
+              klass = ['Utils', 'SalesForce', entity.attributes.type].join('::').classify.constantize
+              klass.new(entity)
             end
           end
           self.send("#{key.underscore}=", value)

@@ -4,8 +4,8 @@ require 'awesome_print'
 require 'yaml'
 require 'watir'
 require 'watir-scroll'
-require_relative 'cache_folder'
-require_relative '../global_utils/global_utils'
+require_relative './lib/cache_folder'
+require_relative './lib/utils'
 ActiveSupport::TimeZone[-8]
 
 class ConsolePotato
@@ -18,11 +18,12 @@ class ConsolePotato
     @browser_tool        = BrowserTool.new
     # @local_source_folder = Pathname.new('/Users/voodoologic/Sandbox/backup/Opportunity')
     @local_dest_folder   = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
-    # @local_dest_folder   = Pathname.new('/home/doug/Sandbox/cache_folder')
+    @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
+    @dated_cache_folder   = Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s
     @do_work             = true
     @download = @cached  = 0
     @meta                = DB::Meta.first_or_create(project: project)
-    @offset_date         = Utils::SalesForce.format_time_to_soql(@meta.offset_date)
+    @offset_date         = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
     @offset_count        = @meta.offset_counter
   end
 
@@ -33,129 +34,28 @@ class ConsolePotato
         @do_work   = false
         @processed = 0
         finance_folders do |financial_folder|
-          boxfolder_db = DB::BoxFolder.first_or_create(box_id: financial_folder.id)
-          next if boxfolder_db.download_complete
-          next if financial_folder.name == "Case Finance Template"
-          next if financial_folder.name == "Opportunity Finance Template"
-          sf_name  = sf_name_from_ff_name(financial_folder)
-          query = construct_query(name: sf_name)
-          opportunity = @sf_client.custom_query(query: query).first
-          next unless opportunity
-          dest_path = update_cache_folder(opportunity, financial_folder)
-          next if dest_path == false
-          financial_folder.files.each do |file|
-            puts "processing file: #{file.name}"
-            boxfile_db = DB::BoxFile.first_or_create(box_id: file.id)
-            next if boxfile_db.download_complete
-            begin
-              if work_completed?(file, dest_path)
-                next
-              else
-                source_file = download_from_box(file, dest_path )
-              end
-            rescue => e
-              ap e.backtrace
-              binding.pry
-            end
-            puts File.basename(source_file)
-            boxfile_db.download_complete = true
-            boxfile_db.save
-          end
-          boxfolder_db.download_complete = true
-          boxfolder_db.save
-          @meta.offset_date = Utils::SalesForce.soql_time_to_datetime(opportunity.created_date)
-          @meta.save
+          #find opp
+            opportunity = opp_from_finance_folder(finance_folder)
+            next unless opportunity
+            next if [ '006610000066jcyAAA' , '00661000008PuHQAA0' , '00661000005RPAjAAO' ].include? opportunity.id
+            make_file(opportunity)
+            make_xml(opportunity)
+            make_db(opportunity)
+            make_box(opportunity)
+            make_native(opportunity)
+            opportunity.cases.each do |sf_case|
+              make_file(sf_case)
+              make_xml(sf_case)
+              make_db(sf_case)
+              make_box(sf_case)
+              make_native(sf_case)
+              #make xml
+              #make db
+              #get box
+              #get native
         end
-
       end
     end
-  end
-
-  def cases_folders
-    folders = Dir.glob(CacheFolder.cache_folder + '/*')
-    puts "folder count" * 10
-    puts folders.count
-    folders.each_with_index do |path, i |
-      puts i
-      path = Pathname.new(path)
-      opp_id = CacheFolder.opp_id_from_path(path.to_s)
-      if DB::SalesForceProgressRecord.first( sales_force_id: opp_id, object_type: 'Opportunity', kitten_migration_complete: true)
-        puts 'skipping ' + opp_id
-        next
-      end
-      query = construct_query(id: opp_id)
-      opportunity = @sf_client.custom_query(query: query).first
-      next unless opportunity
-      opportunity.cases.each do |sf_case|
-        next if opportunity.migration_complete?(:kitten)
-        dest_path = update_case_cache_folder(opportunity, sf_case)
-        sf_linked = query_frup(sf_case).first 
-        if sf_linked == false || sf_linked.nil?
-          initiate_folder_creation(sf_case)
-          puts "8"*88
-          puts 'initiating and sleeping'
-          puts "8"*88
-          sleep 5
-          sf_linked = query_frup(sf_case).first
-        end
-        # box_folder_path = dest_path + sf_linked.box__folder_id__c
-        # box_folder_path.mkpath
-        counter = 0
-        while sf_linked == false || sf_linked.nil? do 
-          counter +=1
-          sleep 1
-          fail('fuck this shit') if counter > 60*3
-        end
-        case_folder_path = dest_path + sf_linked.box__folder_id__c
-        case_folder_path.mkpath
-        meta = {subject: sf_case.subject}
-        File.open(case_folder_path + 'meta.yml', 'w') {|f| f.write meta.to_yaml}
-        begin
-          agent = @browser_tool.agents.first
-          agent.goto('https://na34.salesforce.com/' + sf_case.id)
-          0..agent.window.size.height do |i|
-            agent.scroll.to [0,i] if i % 10 == 0
-          end
-        rescue => e
-          puts e
-          binding.pry
-        end
-        begin
-          until box_folder = @box_client.try(:folder_from_id, sf_linked.box__folder_id__c) do
-            sleep 3
-          end
-        rescue => e
-          sleep 3
-          retry
-        end
-        box_folder.files.each do |file|
-          download_from_box(file, case_folder_path) unless file_present?(file, case_folder_path)
-        end
-        @box_client.folder_from_id(sf_linked.box__folder_id__c).folders.each do |case_box_folder|
-          case_folder_path = dest_path + case_box_folder.id
-          case_folder_path.mkpath
-          meta = {name: case_box_folder.name}
-          File.open(case_folder_path + 'meta.yml', 'w') {|f| f.write meta.to_yaml}
-          case_box_folder.files.each do |file|
-            download_from_box(file,case_folder_path) unless file_present?(file, case_folder_path)
-          end
-        end
-        @offset_date = opportunity.created_date # creates a marker for next query
-        @meta.offset_date = @offset_date
-        @meta.save
-      end
-      opportunity.mark_completed(:kitten)
-    end
-
-    # cases
-    #  |
-    #  ⌞  public_id
-    #go through current directory
-    #get opp.id
-    #get cases
-    #populate case data 
-    #import case data into yml
-    #
   end
 
   def populate_database
@@ -167,10 +67,237 @@ class ConsolePotato
     end
   end
 
+  def produce_snapshot_from_scratch
+    finance_folders do |finance_folder|
+      opportunity = opp_from_finance_folder(finance_folder)
+      next unless opportunity
+      next if [ '006610000066jcyAAA' , '00661000008PuHQAA0' , '00661000005RPAjAAO' ].include? opportunity.id
+      todays_backup = @dated_cache_folder + opportunity.id
+      todays_backup.mkpath
+      add_attachments_to_path(todays_backup, opportunity.attachments)
+      populate_local_box_attachments_for_sobject_and_path(opportunity, todays_backup)
+      populate_local_cases_salesforce_native_attachments_and_box_from_opportunity(opportunity)
+    end
+  end
+
   def bc
     @browser_tool.close
   end
+
   private
+
+  def opp_from_finance_folder(finance_folder)
+    sf_name  = sf_name_from_ff_name(finance_folder)
+    query = construct_opp_query(name: sf_name)
+    @sf_client.custom_query(query: query).first
+  end
+
+  def populate_local_salesforce_native_attachments_cases_from_opportunity(opp)
+    todays_backup      = @dated_cache_folder
+    cases_folder = (todays_backup + opp.id + 'cases')
+    cases_folder.mkpath
+    opp.cases.each do |sf_case|
+      case_folder = cases_folder + sf_case.id
+      case_folder.mkpath
+      add_attachments_to_path(case_folder, sf_case.attachments)
+    end
+  end
+
+  def populate_local_cases_salesforce_native_attachments_and_box_from_opportunity(opp)
+    todays_backup      = @dated_cache_folder
+    cases_folder = (todays_backup + opp.id + 'cases')
+    cases_folder.mkpath
+    opp.cases.each do |sf_case|
+      case_folder = cases_folder + sf_case.id
+      case_folder.mkpath
+      add_attachments_to_path(case_folder, sf_case.attachments)
+      populate_local_box_attachments_for_sobject_and_path(sf_case, case_folder)
+    end
+  end
+
+  def populate_local_box_attachments_for_sobject_and_path(sobject, path)
+    sf_linked = poll_for_frup(sobject)
+    begin
+      parent_box_folder = @box_client.folder_from_id( sf_linked.box__folder_id__c )
+    rescue Boxr::BoxrError => e
+      visit_page_of_corresponding_id(sobject.id)
+      sleep 3
+      retry
+    end
+    local_parent_box_folder = (path + parent_box_folder.id)
+    local_parent_box_folder.mkpath
+    parent_box_folder.files.each do |file|
+      download_from_box(file, local_parent_box_folder )
+    end
+    parent_box_folder.folders.each do |folder|
+      object_subfolder_path = local_parent_box_folder + folder.id
+      object_subfolder_path.mkpath
+      meta = {name: folder.name}
+      File.open(object_subfolder_path  + 'meta.yml', 'w') {|f| f.write meta.to_yaml}
+      folder.files.each do |file|
+        download_from_box(file, object_subfolder_path) unless file_present?(file, object_subfolder_path)
+      end
+    end
+  end
+
+  def add_attachments_to_path(folder, attachments)
+    return unless attachments.present? #guard against nil or []
+    attachments.each do |a|
+      proposed_file = folder + a.name
+      if !proposed_file.exist? || proposed_file.size == 0
+        sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+        File.open(proposed_file, 'w') do |f|
+          f.write(sf_attachment.api_object.Body)
+        end
+      end
+    end
+  end
+
+  def add_sf_attachments_to_folder(object)
+    case object
+    when Pathname
+      opp = salesforce_object_from_id_folder(object)
+      binding.pry unless opp
+      add_attachments_to_path(folder, opp.attachments)
+    when Utils::SalesForce::Opportunity, Utils::SalesForce::Case
+      add_attachments_to_path(folder, object.attachments)
+    else
+      binding.pry
+      fail
+    end
+  end
+
+  def salesforce_object_from_id_folder(folder)
+    id = folder.split.last.to_s
+    type = id[0] == 5 ? 'Case' : 'Opportunity'
+    query = <<-EOF
+      SELECT id, name,
+      (SELECT id, name FROM Attachments)
+      FROM #{type}
+      WHERE id = '#{id}'
+    EOF
+    opp = @sf_client.custom_query(query: query).first
+  end
+
+  def add_box_attachments_to_folder(box_folder)
+    folder_id = box_folder.split.last.to_s
+    api_box_folder = @box_client.folder_from_id(folder_id)
+    api_box_folder.files.each do |file|
+      proposed_file = box_folder + file.name
+      binding.pry
+      if !proposed_file.exist?
+        File.new(proposed_file) do |local_file|
+          local_file.write @box_client.download_file(file)
+        end
+      end
+    end
+  end
+
+  def add_meta_to_folder(folder)
+    if folder.split[-1].size >= 15 #sf folder
+    else
+    end
+  end
+
+  def visit_page_of_corresponding_id(id)
+    agent = @browser_tool.agents.first
+    agent.goto('https://na34.salesforce.com/' + id)
+  end
+
+  def visit_page_of_corresopnding_folder(folder)
+    folder_id = folder.split.last.to_s
+    agent = @browser_tool.agents.first
+    agent.goto('https://na34.salesforce.com/' + folder_id)
+  end
+
+  def process_box_folders(box_folder, parent_folder)
+    destination = parent_folder + box_folder.id
+    destination.mkpath
+    box_folder.files.each do |file|
+      proposed_file = destination + file.name
+      if !proposed_file.present?
+        File.new(proposed_file) do |local_file|
+          local_file.write @box_client.download_file(file)
+        end
+      end
+    end
+    box_folder.folders.each do |folder|
+      process_box_folders(folder, destination)
+    end
+  end
+
+  def move_cases_over(source_folder, dest_folder)
+    create_folders_from_source(source_folder, dest_folder)
+    # copy_stuff_over(source_folder, dest_folder)
+  end
+
+  def create_folders_from_source(source_folder, dest_folder) #source_folder = opp, dset_folder = 
+    source_cases_folder = Pathname.new(source_folder + 'cases')
+    binding.pry unless source_cases_folder.exist?
+    traverse_cases(source_cases_folder)
+  end
+
+  def traverse_cases(source_cases_folder)
+    source_cases_folder.each_child.select{|x| x.split.last.to_s =~ /^500/ && !x.file?}.each do |case_folder|
+      puts case_folder
+      box_folder = find_parent_box_folder_of_case(case_folder)
+      move_other_box_folders_into_parent_folder(box_folder, case_folder)
+    end
+  end
+
+  def copy_stuff_over(source_folder, dest_folder)
+    source_directories    = Dir.glob(source_folder + '**/*').select{|c| File.directory?(c) }.map{|d| Pathname.new(d)}
+    newly_created_folders = Dir.glob(dest_folder + 'cases/**/*').select{|c| File.directory?(c) }.map{|d| Pathname.new(d)}
+    newly_created_folders.each do |folder|
+      corresponding_source_folder = find_directory_in_list(folder, source_directories)
+      items_to_copy = corresponding_source_folder.children.delete_if { |d| d.basename.to_s == '.DS_Store' }
+      items_to_copy.each do |item|
+        FileUtils.cp_r(item, dest_folder)
+      end
+    end
+  end
+
+  def find_directory_in_list(dir, list)
+    list.detect{ |path| path.split.last.to_s == dir.split.last.to_s }
+  end
+
+  def move_other_box_folders_into_parent_folder(parent_box_folder, source_case_folder)
+    parent_dest_folder = source_case_folder + parent_box_folder.id
+    parent_box_folder.folders.each do |folder|
+      local_folder = Pathname.new(source_case_folder) + folder.id
+      begin
+        FileUtils.mv(local_folder, parent_dest_folder) if local_folder.exist? && !parent_dest_folder.exist?
+      rescue => e
+        puts e
+        binding.pry
+      end
+    end
+  end
+
+  def move_opp_to_new_format(folder) 
+    box_finance_folder_id, opp_id, box_root_folder_id = folder.split.last.to_s.split('_')
+    opp_folder = @formatted_dest_folder + opp_id
+    visit_page_of_corresopnding_folder(opp_folder)
+    sleep 3
+    opp = salesforce_object_from_id_folder(opp_folder)
+    binding.pry unless opp
+    add_sf_attachments_to_folder(opp)
+    move_cases_over(folder, opp_folder) #folder = oroginal oldcache folder, opp_folder = newcache
+    @kill  = 0
+    begin
+      api_box_folder = @box_client.folder_from_id(box_root_folder_id)
+    rescue
+      @kill += 1
+      if @kill >= 3
+        binding.pry
+      else
+        puts "404 sleeping"
+        sleep 3
+        retry
+      end
+    end
+    process_box_folders(api_box_folder, opp_folder)
+  end
 
   def file_present?(file, path)
     (path + file.name).exist?
@@ -185,31 +312,18 @@ class ConsolePotato
     Pathname.new([dest_path , file.name].join('/')).exist?
   end
 
-  def download_from_box(file, path = nil)
-    begin
-      if path
-        local_file = File.new(path + file.name, 'w')
-      else
-        local_file = File.new("/tmp/#{file.name}", 'w')
-      end
+  def download_from_box(file, path)
+    proposed_file = Pathname.new(path) + file.name
+    if !proposed_file.exist?
+      local_file = File.new(proposed_file, 'w')
       local_file.write(@box_client.download_file(file))
       local_file.close
       @download += 1
       puts "Download number #{@download}"
-      local_file
-    rescue => e
-      ap e.backtrace
-      binding.pry
     end
   end
 
-  def get_local_copy(file_path)
-    @cached += 1
-    puts "Cached number #{@cached}"
-    File.new get_source_file(file_path)
-  end
-
-  def construct_query(name: nil, id: nil )
+  def construct_opp_query(name: nil, id: nil )
     if id
       query = <<-EOF
           SELECT Name, Id, createdDate,
@@ -239,98 +353,18 @@ class ConsolePotato
     query
   end
 
-  def update_cache_folder(opportunity, ff)
-    sf_linked = query_frup(opportunity).first || initiate_folder_creation(opportunity)
-    if sf_linked.nil? || sf_linked == false
-      return false
-    end
-    cache_path_name = [ ff.id, opportunity.id, sf_linked.box__folder_id__c ].join('_')
-    path = Pathname.new(@local_dest_folder) + cache_path_name
-    path.mkpath
-    path
-  end
-
-  def update_case_cache_folder(opp, sf_case)
-    path = path_from_opportunity(opp)
-    case_folder = path + 'cases' + sf_case.id
-    case_folder.mkpath
-    case_folder
-  end
-
-  def initiate_folder_creation(sobject)
-    if create_folder_through_browser(sobject)
-      poll_for_frup(sobject)
-    else
-      return false
-    end
-  end
-
-  def path_from_opportunity(opp)
-    folder = Dir.glob(CacheFolder.cache_folder + '/*').detect do |f|
-      f.split('/').last.split('_')[1] == opp.id.to_s
-    end
-    Pathname.new(folder)
-  end
-
-  def exist_locally?(opp , file)
-    file_name_minus_index = file.name.gsub(/^\d{1,3}-/, '')
-    opp_file_path = Pathname.new([@local_source_folder , "Opportunity", opp.id , file_name_minus_index].join('/'))
-    return opp_file_path if opp_file_path.exist?
-    opp.cases.each do |opp_case|
-      _case_path = @local_source_folder.to_s.split('/')
-      _case_path << 'Cases'
-      case_path =  _case_path.join('/')
-      file_path = Pathname.new(case_path) + opp_case.id + file_name_minus_index
-      puts "found local cache" if file_path.exist?
-      return file_path if file_path.exist?
-    end
-    nil
-    # file_path = Pathname.new(@local_source_folder) + opp.id + file.name
-    # file_path.exist?
-  end
-
-  def get_source_file(local_file_path)
-    sf_object_id   = sf_object_id_from_path(local_file_path)
-    sf_object_type = sf_object_type_from_path(local_file_path)
-    binding.pry
-    file_path = Pathname.new([@local_source_folder , sf_object_type, sf_object_id , File.basename(local_file_path)].join('/'))
-    binding.pry
-    file_path if file_path.exist?
-  end
-
-  def sf_object_id_from_path(path)
-    path.to_s.split('/')[-2]
-  end
-
-  def sf_object_type_from_path(path)
-  end
-
-  def copy_file_to_cache_folder(path, file)
-    puts "copying file: #{File.basename(file)} to path: #{path.to_s}"
-    begin
-      binding.pry if File.dirname(file) !~ /tmp/
-      FileUtils.cp(file, path)
-      if File.basename(file).split('/')[1] == 'tmp'
-        puts "removing temp file: #{File.path(file)}"
-        FileUtils.rm(file)
-      end
-    rescue => e
-      puts e.backtrace
-      binding.pry
-    end
-  end
-
   def query_frup(sobject)
-    @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'")
+    result = @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'")
   end
 
   def poll_for_frup(opp)
     kill_counter = 0
-    sf_linked = nil
+    sf_linked = query_frup(opp).first
     while sf_linked.nil? do
+      puts 'sleeping until created'
       sleep 6
       kill_counter += 1
-      break if kil_counter > 5
+      break if kill_counter > 5
       sf_linked = query_frup(opp).first
     end
     sf_linked
@@ -338,21 +372,6 @@ class ConsolePotato
 
   def create_folder_through_browser(opp)
     @browser_tool.create_folder(opp)
-  end
-
-  def find_old_file(path, sf_link_record)
-    Pathname.new( [@local_source_folder, sf_link_record.box__object_name__c, sf_link_record.box__record_id__c].join('/') )
-  end
-
-  def guard_against_multiple_records(sf_linked)
-    # there are some join records that are duplicates
-    # probably due to integration development
-    sf_linked.map do |sf|
-      {
-        folder_id: sf.box__folder_id__c,
-        record_id: sf.box__record_id__c
-      }
-    end.uniq.count
   end
 
   def sf_name_from_ff_name(ff)
@@ -366,21 +385,20 @@ class ConsolePotato
     end
   end
 
-  def finance_folders
-    @box_client.folder("7811715461").folders.delete_if do |finance_folder|
-      completed_db      = DB::BoxProgressRecord.first(box_id: finance_folder.id, object_type: 'folder', complete: true)
-      db_finance_folder = DB::BoxProgressRecord.first_or_create(box_id: finance_folder.id, object_type: 'folder')
-      finance_folder.storage_object = db_finance_folder
-      yield finance_folder if block_given? && !completed_db && finance_folder.name !~ /\d{8}\ -\ Finance$/
-      completed_db && finance_folder.name !~ /\d{8}\ -\ Finance$/
+  def finance_folders(&block)
+    @box_client.folder("7811715461").folders.select do |finance_folder|
+      yield finance_folder if block_given? && finance_folder.name !~ /$(Case Finance Template|Opportunity Finance Template)^/
+      finance_folder.name.match(/\d{8}\ -\ Finance$/)
     end
   end
 end
 
 begin
   cp = ConsolePotato.new()
-  # cp.process_work_queue
-  cp.cases_folders
+  cp.produce_snapshot_from_scratch
+rescue => e
+  ap e.backtrace
+  binding.pry
 ensure
   cp.browser_tool.agents.each(&:close)
 end
