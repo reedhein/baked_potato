@@ -13,9 +13,19 @@ module Utils
       end
 
       def custom_query(query: nil, &block)
+        kill_counter = 3
         fail ArgumentError if query.nil?
         begin
           result = @client.query(query)
+        rescue Faraday::ConnectionFailed
+          if kill_counter > 1
+            puts '*'*88
+            puts 'connection failure. sleeping and retrying'
+            puts '*'*88
+            kill_counter -= 1
+            sleep 3
+            retry
+          end
         rescue => e
           ap e.backtrace
           binding.pry
