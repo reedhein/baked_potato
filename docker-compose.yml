@@ -5,9 +5,6 @@ services:
     ports:
       - '4545:4545'
     depends_on:
-      - postgres
       - redis
-  postgres:
-    image: postgres
   redis:
     image: redis

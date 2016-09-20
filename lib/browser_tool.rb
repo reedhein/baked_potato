@@ -1,7 +1,7 @@
 require 'watir'
 class BrowserTool
   attr_accessor :worker_pool, :agents, :instance_url
-  def initialize(number_of_browsers = 1)
+  def initialize(number_of_browsers = 4)
     @lightning     = false
     Utils.environment = :production
     @sf_login      = CredService.creds.salesforce.public_send(Utils.environment).host
@@ -11,7 +11,7 @@ class BrowserTool
     @agents        = []
     @worker_pool = @wp = WorkerPool.instance
     number_of_browsers.times do |i|
-      self.instance_variable_set("@agent#{i}".to_sym, Watir::Browser.new(:firefox))
+      self.instance_variable_set("@agent#{i}".to_sym, Watir::Browser.new(:chrome))
       agent = self.instance_variable_get("@agent#{i}".to_sym)
       @agents << agent
       agent.driver.manage.timeouts.implicit_wait = 30

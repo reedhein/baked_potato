@@ -12,7 +12,6 @@ class WorkerPool
     Signal.trap('INT') do
       @interrupted = true
       finish
-
       exit 0
     end
 
@@ -48,10 +47,10 @@ class WorkerPool
     @workers.map(&:join)
   end
 
-private
+  private
 
   def wait_for_tasks
-    while @tasks.length == 0 do
+    while @tasks.length < 1 do
       sleep WAIT_TIMEOUT
     end
     puts 'breaking out'

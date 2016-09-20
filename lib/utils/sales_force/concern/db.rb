@@ -9,10 +9,13 @@ module Utils
 
         def convert_api_object_to_local_storage(api_object)
           fail 'SOQL query needs Id' unless api_object['Id']
-          ::DB::SalesForceProgressRecord.first_or_create(
+          db = ::DB::SalesForceProgressRecord.first_or_new(
             sales_force_id: api_object.fetch('Id'),
             object_type: api_object.fetch('attributes').fetch('type')
           )
+          db.box_id = api_object.fetch('box__Folder_ID__c', nil)
+          db.box__record_id__c = api_object.fetch('box__Record_ID__c', nil)
+          db.save
         end
 
         def migration_complete?

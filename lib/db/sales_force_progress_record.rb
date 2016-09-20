@@ -4,6 +4,7 @@ module DB
     property :id, Serial
     property :created_date, DateTime
     property :sales_force_id, String, length: 255
+    property :box__record_id__c, String, length: 255
     property :zoho_id, String, length: 255
     property :box_id, String, length: 255
     property :object_type, String, length: 255
@@ -12,5 +13,9 @@ module DB
     property :kitten_migration_complete, Boolean, default: false
     property :notes_migration_complete, Boolean, default: false
     property :zoho_object_type, String, length: 255
+
+    def box__folder_id__c
+      box_id
+    end
   end
 end
