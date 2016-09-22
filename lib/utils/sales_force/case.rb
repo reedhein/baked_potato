@@ -16,6 +16,10 @@ module Utils
       def opportunity_id
         opportunity__c
       end
+
+      def attachments
+        super
+      end
     end
   end
 end

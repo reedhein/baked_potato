@@ -1,8 +1,9 @@
 class BPImage
-  attr_accessor :db_image
-  def initialize(image, cache_folder)
-    @image    = Pathname.new(image)
-    @db_image = DB::ImageProgressRecord.find(opportunity_id: cache_folder.opp_id)
+  attr_accessor :db_image, :path
+
+  def initialize(image_path)
+    @path         = Pathname.new(image_path)
+    @cache_folder = CacheFolder.new(@path)
   end
 
   def lock
@@ -10,19 +11,26 @@ class BPImage
   end
 
   def self.random_unlocked
-    records = DB::ImageProgressRecord.all(locked: false, complete: false, type: '.pdf') ||
-      DB::ImageProgressRecord.all(locked: false, complete: false, type: '.png') ||
-      DB::ImageProgressRecord.all(locked: false, complete: false, type: '.jpg')
+    records = DB::ImageProgressRecord.all(parent_type: 'opportunity', locked: false, complete: false, type: %w(.jpg .png .pdf))
     record = records.sample
-    binding.pry unless record
-    cf = CacheFolder.new(opp_id: record.opportunity_id)
-    path_to_image = Pathname.new([cf.cache_folder, cf.folder, record.filename].join('/'))
-    bpi = BPImage.new(path_to_image, cf)
+    cf = CacheFolder.new(record.full_path)
+    bpi = BPImage.new(record.full_path)
     bpi.db_image = record
     bpi
   end
 
   def full_path
     @db_image.full_path
+  end
+
+  def meta
+    @cache_folder.meta
+  end
+
+  def cases
+    cases_folder = @path.parent + 'cases'
+    cases_folder.children.select do |entity|
+      entity.directory? && entity.basename =~ /^005/
+    end
   end
 end

@@ -38,7 +38,7 @@ module Utils
 
       def cases
         query = <<-EOF
-        SELECT id, createddate, closeddate, zoho_id__c, createdbyid, contactid,
+        SELECT id, createddate, closeddate, zoho_id__c, createdbyid, contactid, opportunity__c,
         (SELECT id, Name FROM Attachments),
         (SELECT id, createddate, CreatedById, type, body, title FROM feeds)
         FROM case
