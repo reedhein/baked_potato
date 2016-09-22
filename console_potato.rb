@@ -6,17 +6,18 @@ require 'watir'
 require 'watir-scroll'
 require_relative './lib/cache_folder'
 require_relative './lib/utils'
+require_relative 'data_potato'
 ActiveSupport::TimeZone[-8]
 
 class ConsolePotato
   attr_reader :browser_tool
   def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil)
-    Utils.environment    = @environment = environment
-    @id                  = id
-    @sf_client           = Utils::SalesForce::Client.instance
+    Utils.environment     = @environment = environment
+    @id                   = id
+    @sf_client            = Utils::SalesForce::Client.instance
     @box_client           = Utils::Box::Client.instance
     @worker_pool          = WorkerPool.instance
-    @browser_tool         = BrowserTool.new
+    # @browser_tool         = BrowserTool.new
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
@@ -48,10 +49,6 @@ class ConsolePotato
               make_db(sf_case)
               make_box(sf_case)
               make_native(sf_case)
-              #make xml
-              #make db
-              #get box
-              #get native
             end
         end
       end
@@ -76,13 +73,15 @@ class ConsolePotato
       end
       opportunities.each do |opportunity|
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(opportunity) }
+        # migrated_cloud_to_local_machine(opportunity)
+        opportunity.cases.each do |sf_case|
+          @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(sf_case) }
+        end
       end
       cases.each do |sf_case|
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(sf_case) }
+        # migrated_cloud_to_local_machine(sf_case)
       end
-      puts '\''*88
-      puts "task size: #{@worker_pool.tasks.size}"
-      puts '\''*88
     end
   end
 
@@ -232,20 +231,6 @@ class ConsolePotato
     @sf_client.custom_query(query: query).first
   end
 
-  def add_box_attachments_to_folder(box_folder)
-    folder_id = box_folder.split.last.to_s
-    api_box_folder = @box_client.folder_from_id(folder_id)
-    api_box_folder.files.each do |file|
-      proposed_file = box_folder + file.name
-      binding.pry
-      if !proposed_file.exist?
-        File.new(proposed_file) do |local_file|
-          local_file.write @box_client.download_file(file)
-        end
-      end
-    end
-  end
-
   def visit_page_of_corresponding_id(id)
     @browser_tool.queue_work do |agent|
       agent.goto('https://na34.salesforce.com/' + id)
@@ -282,11 +267,6 @@ class ConsolePotato
     (path + file.name).exist?
   end
 
-  def preserve_indexed_name!(source_file, file)
-    binding.pry
-    File.rename(source_file, file.name)
-  end
-
   def work_completed?(file, dest_path)
     Pathname.new([dest_path , file.name].join('/')).exist?
   end
@@ -318,7 +298,7 @@ class ConsolePotato
     end
     <<-EOF
         SELECT Name, Id, createdDate,
-        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, opportunity__c FROM cases__r),
         (SELECT Id, Name FROM Attachments)
         FROM Opportunity
         WHERE Name in #{names.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
@@ -370,7 +350,7 @@ class ConsolePotato
   end
 
   def query_frup(sobject)
-    db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id)
+    db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id) 
     if db.present? && db.try(:box_id).present?
       db
     else
@@ -393,7 +373,7 @@ class ConsolePotato
     if sf_linked
       sf_linked
     else
-      document_offesive_object(sobject)
+      document_offesive_object(sobject) 
       nil
     end
   end
@@ -440,12 +420,25 @@ rescue => e
   binding.pry
 ensure
   w = WorkerPool.instance
-  while w.tasks.size > 1 do
+  count = w.tasks.size
+  kill_switch = 0
+  while w.tasks.size > 1 do 
     sleep 1
+    new_count = w.tasks.size
+    if new_count == count
+      kill_switch += 1
+    else
+      count = new_count
+      kill_switch = 0
+    end
+    binding.pry if kill_switch > 60*5
     puts '\''*88
     puts "task size: #{w.tasks.size}"
+    if count % 1000 == 0
+      puts "worker status: #{w.workers.map(&:inspect)}"
+      sleep 4
+    end
     puts '\''*88
   end
-  binding.pry
   cp.browser_tool.agents.each(&:close)
 end
