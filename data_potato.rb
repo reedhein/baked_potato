@@ -14,13 +14,22 @@ class DataPotato
   end
 
   def populate_database
+    # puts 'deleting old'
+    # DB::ImageProgressRecord.destroy
+    # puts 'finished deleting old'
     files = Dir.glob(CacheFolder.path + '**/*').delete_if do |entity|
-      Pathname.new(entity).split.last.to_s == 'meta.yml' ||
+      Pathname.new(entity).basename.to_s == 'meta.yml' ||
         Pathname.new(entity).directory?
     end
-    derp = files.map do |x|
+    files.map do |x|
       DB::ImageProgressRecord.create_new_from_path(x)
     end
-    binding.pry
   end
+end
+
+begin
+  DataPotato.new.populate_database
+rescue DataObjects::ConnectionError
+  sleep 0.1
+  retry
 end

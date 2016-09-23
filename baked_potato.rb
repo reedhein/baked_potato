@@ -3,10 +3,17 @@ require 'pry'
 require 'awesome_print'
 require 'classifier-reborn'
 require_relative './lib/utils'
+require 'sass'
+require 'sass/plugin/rack'
+require "sinatra/reloader" if development?
 class BakedPotato < Sinatra::Base
   set env: :development
+  configure :development do
+    register Sinatra::Reloader
+  end
   set port: 4545
   set :bind, '0.0.0.0'
+  use Sass::Plugin::Rack
   @box_client = Utils::Box::Client.instance
   @sf_client  = Utils::SalesForce::Client.instance
 
@@ -18,10 +25,8 @@ class BakedPotato < Sinatra::Base
     @image.lock
     @full_path   = get_full_path
     @name        = @image.path.basename
-    binding.pry
-    @size        = @image.db_image.size
-    @type        = @image.db_image.type
-    @fingerprint = @image.db_image.fingerprint
+    @cases       = @image.cases
+    @opportunity = @image.opportunity
     haml :index
   end
 

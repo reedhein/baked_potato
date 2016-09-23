@@ -1,22 +1,96 @@
 !!! 5
 %head
-  %title title
-%body{style: "background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg')"}
-  %br
-  - case @type
-  - when '.pdf'
-    %embed{src: @full_path, width: "480", height: "640", type: 'application/pdf', style: "margin: auto; display: block"}
-  - when '.png'
-    %img{src:   @full_path,   width: '480', height: '640', style: "margin: auto; display: block"}
-  - when '.jpg'
-    %img{src:  @full_path,   width: '480', height: '640', style: "margin: auto; display: block"}
+  %title #{@image.name}
+  %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap.css'}
+  %script{src: "/js/jquery-3.1.1.min.js"}
+  %script{src: "/js/jquery.raptorize.1.0.js"}
+  %script{src: "/js/bootstrap.min.js"}
+%body{style: "background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
+  .container-fluid
+    .row
+      %br
+      - case @image.ext
+      - when '.pdf'
+        %embed.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "height: 40em"}
+      - when '.png'
+        %img.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
+      - when '.jpg'
+        %img.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
 
-  %br.clear
-  .offset-lg-5.center.text-center{style: 'margin: auto; text-align:center; width: 100%;'}
-    %form{ action: 'categorize', method: "POST"}
-      %input{type: :hidden, name: :path, value: @full_path}
-      %input{type: :hidden, name: :type, value: @type}
-      %input{type: :hidden, name: :size, value: @size}
-      %input{type: :hidden, name: :fingerprint, value: 'fingerprint'}
-      %input{type: :submit, value: 'shared' }
-      %input{type: :submit, value: 'financed' }
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-6.offset-lg-6.offset-xl-6{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
+        %h2{style: 'float: left'}
+          Opportunity: #{@image.opportunity.meta[:name]}|
+        %form{ action: 'categorize', method: "POST"}
+          %input{type: :hidden, name: :path, value: @full_path}
+          %input{type: :hidden, name: :type, value: @type}
+          %input{type: :hidden, name: :size, value: @size}
+          %input{type: :hidden, name: :fingerprint, value: 'fingerprint'}
+        .actions{style: 'float: right'}
+          %button.btn-warning
+            Go to Opportunity
+          %button.btn-secondary
+            Do Nothing
+          %button.btn-success
+            Kitty
+        %br.clearfix
+
+        .col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
+          %ul.nav.nav-tabs#mainTabs{role: 'tablist'}
+            %li.nav-item
+              %a.nav-link{href: '#fileDetails', role:'tab', 'data-toggle': 'tab', 'data-target': '#fileDetails'}
+                =@image.name
+            %li.nav-item
+              %a.nav-link{href: '#boxFolders', role:'tab', 'data-toggle': 'tab', 'data-target': '#boxFolders'}
+                Box
+            %li.nav-item
+              %a.nav-link{href: '#salesforceAttachments', role:'tab', 'data-toggle': 'tab', 'data-target':  '#salesforceAttachments'}
+                Salesforce Native
+            -#.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
+          .tab-content#myTabContent
+            .nav-pane.fade.in.active#fileDetails{role: 'tabpanel'}
+              %h3
+                Name:
+              %p
+                =@image.name
+              %h3
+                Location:
+              %p
+                =@image.path
+              %h3
+                Actions:
+              - @image.opportunity.box_folders.each do |box_folder|
+                %button.btn
+                  move to: #{box_folder.meta[:name]}
+            .nav-pane.fade#boxFolders{role: 'tabpanel'}
+              %h3 stuff
+            .nav-pane.fade#salesforceAttachments{role: 'tabpanel'}
+              %h3 Salesforce Attachments
+
+    %br
+    %h4.col-lg-6{style: 'color: white'} Cases
+    %br
+    .row
+      .clearfix
+      - @cases.each_with_index do |sf_case, i|
+        .card.col-xl-3{style: 'background: rgba(256, 256, 256, .8);'}
+          .card-block
+            %h4
+              = sf_case.meta[:subject]
+              %hr
+              %p{style: 'float:right'}
+                = sf_case.meta[:case_number]
+            %p
+              Actions:
+            - sf_case.box_folders.each do |box_folder|
+              .clearfix
+              %button.btn{style: 'margin-top: 1em'}
+                move to: #{box_folder.meta[:name]}
+            %p{style: 'float:right'}
+              %button.btn-warning
+                Go to original
+              %button.btn-success
+                Go to kitty
+  :javascript
+    $(document).ready(function() {
+    })
+    

@@ -1,7 +1,7 @@
 require 'thread'
 
 class WorkerPool
-  WAIT_TIMEOUT = 1 # 1 second
+  WAIT_TIMEOUT = 0.1 # 1 tenth second
   include Singleton
   attr_accessor :tasks, :workers
 
@@ -21,6 +21,7 @@ class WorkerPool
         begin
           loop do
             wait_for_tasks
+            puts 'found task'
             if @tasks.empty? or @interrupted
               break
             end

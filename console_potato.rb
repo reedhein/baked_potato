@@ -17,7 +17,7 @@ class ConsolePotato
     @sf_client            = Utils::SalesForce::Client.instance
     @box_client           = Utils::Box::Client.instance
     @worker_pool          = WorkerPool.instance
-    # @browser_tool         = BrowserTool.new
+    @browser_tool         = BrowserTool.new
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
@@ -52,15 +52,6 @@ class ConsolePotato
             end
         end
       end
-    end
-  end
-
-  def populate_database
-    files = Dir.glob(@dated_cache_folder + '**/*').map do |d_or_f|
-      Dir.glob(d_or_f + '/*')
-    end.flatten.delete_if{|x| Pathname.new(x).basename == 'cases' && Pathname.new(x).extname == 'yml'}
-    files.map do |x|
-      DB::ImageProgressRecord.create_new_from_path(x)
     end
   end
 
@@ -163,7 +154,7 @@ class ConsolePotato
     parent_box_folder.folders.each do |box_folder|
       object_subfolder_path = create_box_folder(box_folder, local_parent_box_folder)
       sync_folder_with_box(box_folder, object_subfolder_path )
-      add_meta_to_folder(parent_box_folder, object_subfolder_path)
+      add_meta_to_folder(box_folder, object_subfolder_path)
     end
   end
 
