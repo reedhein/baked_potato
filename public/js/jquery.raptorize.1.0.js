@@ -23,21 +23,21 @@
         return this.each(function() {
 
 			var _this = $(this);
-			var audioSupported = false;
+			var audioSupported = true;
 			//Stupid Browser Checking which should be in jQuery Support
-			if ($.browser.mozilla && $.browser.version.substr(0, 5) >= "1.9.2" || $.browser.webkit) { 
-				audioSupported = true;
-			}
+			// if ($.browser.mozilla && $.browser.version.substr(0, 5) >= "1.9.2" || $.browser.webkit) { 
+				// audioSupported = true;
+			// }
 			
 			//Raptor Vars
-			var raptorImageMarkup = '<img id="elRaptor" style="display: none" src="raptor.png" />'
-			var raptorAudioMarkup = '<audio id="elRaptorShriek" preload="auto"><source src="raptor-sound.mp3" /><source src="raptor-sound.ogg" /></audio>';	
+			var raptorImageMarkup = '<img id="kitten" style="display: none" src="images/kitten.png" />'
+			var raptorAudioMarkup = '<audio id="kitten_meow" preload="auto"><source src="audio/Meow-sound-effect.mp3" /></audio>';	
 			var locked = false;
 			
 			//Append Raptor and Style
 			$('body').append(raptorImageMarkup);
  			if(audioSupported) { $('body').append(raptorAudioMarkup); }
-			var raptor = $('#elRaptor').css({
+			var raptor = $('#kitten').css({
 				"position":"fixed",
 				"bottom": "-700px",
 				"right" : "0",
@@ -51,7 +51,7 @@
 				//Sound Hilarity
 				if(audioSupported) { 
 					function playSound() {
-						document.getElementById('elRaptorShriek').play();
+						document.getElementById('kitten_meow').play();
 					}
 					playSound();
 				}
@@ -67,7 +67,7 @@
 						$(this).delay(300).animate({
 							"right" : offset
 						}, 2200, function() {
-							raptor = $('#elRaptor').css({
+							raptor = $('#kitten').css({
 								"bottom": "-700px",
 								"right" : "0"
 							})
