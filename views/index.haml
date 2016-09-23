@@ -8,16 +8,15 @@
 %body{style: "background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
   .container-fluid
     .row
-      %br
       - case @image.ext
       - when '.pdf'
-        %embed.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "height: 40em"}
+        %embed.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "height: 40em; float: left"}
       - when '.png'
         %img.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
       - when '.jpg'
         %img.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
 
-      .col-sm-6.col-md-6.col-xlg-6.offset-md-6.offset-lg-6.offset-xl-6{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
         %h2{style: 'float: left'}
           Opportunity: #{@image.opportunity.meta[:name]}|
         %form{ action: 'categorize', method: "POST"}
@@ -27,26 +26,25 @@
           %input{type: :hidden, name: :fingerprint, value: 'fingerprint'}
         .actions{style: 'float: right'}
           %button.btn-warning
-            Go to Opportunity
+            %a{href: "http://na34.salesforce.com/#{@opportunity.id}"}
+              Go to Opportunity
           %button.btn-secondary
             Do Nothing
-          %button.btn-success
+          %button.btn-success#kittyButton
             Kitty
-        %br.clearfix
 
         .col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
           %ul.nav.nav-tabs#mainTabs{role: 'tablist'}
             %li.nav-item
-              %a.nav-link{href: '#fileDetails', role:'tab', 'data-toggle': 'tab', 'data-target': '#fileDetails'}
-                =@image.name
+              %a.nav-link.active{href: '#fileDetails', role:'tab', 'data-toggle': 'tab', 'data-target': '#fileDetails'}
+                =@image.name.to_s[0..12]
             %li.nav-item
               %a.nav-link{href: '#boxFolders', role:'tab', 'data-toggle': 'tab', 'data-target': '#boxFolders'}
                 Box
             %li.nav-item
               %a.nav-link{href: '#salesforceAttachments', role:'tab', 'data-toggle': 'tab', 'data-target':  '#salesforceAttachments'}
                 Salesforce Native
-            -#.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
-          .tab-content#myTabContent
+          .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
             .nav-pane.fade.in.active#fileDetails{role: 'tabpanel'}
               %h3
                 Name:
@@ -61,10 +59,23 @@
               - @image.opportunity.box_folders.each do |box_folder|
                 %button.btn
                   move to: #{box_folder.meta[:name]}
-            .nav-pane.fade#boxFolders{role: 'tabpanel'}
-              %h3 stuff
-            .nav-pane.fade#salesforceAttachments{role: 'tabpanel'}
-              %h3 Salesforce Attachments
+              %button.btn
+                Do Nothing & Mark complete
+            .nav-pane.fade#boxFolders{role: 'tabpanel', style: 'display: none'}
+              %ul
+                - @opportunity.box_folders.each do |folder|
+                  %li
+                    = folder.meta[:name]
+                    %ul
+                      -folder.files.each do |file|
+                        %li
+                          = file.path.basename.to_s
+            .nav-pane.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
+              %ul
+                - @opportunity.files.each do |file|
+                  %li
+                    = file.path.basename.to_s
+
 
     %br
     %h4.col-lg-6{style: 'color: white'} Cases
@@ -92,5 +103,10 @@
                 Go to kitty
   :javascript
     $(document).ready(function() {
+      $('#kittyButton').raptorize();
+      $('.nav-item a').click(function(e) {
+        e.preventDefault()
+        debugger
+      })
     })
     

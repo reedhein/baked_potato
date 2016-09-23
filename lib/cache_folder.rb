@@ -67,7 +67,7 @@ class CacheFolder
   end
 
   def files
-    @path.children.select{ |x| x.file? }.map{|d| CacheFolder.new(d)}
+    @path.children.select{ |x| x.file? && x.basename != 'meta.yml'}.map{|d| CacheFolder.new(d)}
   end
 
   private 
