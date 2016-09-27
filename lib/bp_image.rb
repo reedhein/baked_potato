@@ -20,6 +20,10 @@ class BPImage
     bpi
   end
 
+  def self.find_by_id(id)
+    DB::ImageProgressRecord.all(id: id, date: Date.today.to_s)
+  end
+
   def ext
     @db_image.ext
   end
