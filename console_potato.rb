@@ -83,6 +83,21 @@ class ConsolePotato
     add_meta_to_folder(sobject, folder)
   end
 
+
+  def update_database(box_folder, path)
+    box_file_names = box_folder.files.map(&:name)
+    path.each_child.select(&:file?).each do |file|
+      proposed_file = (path + file).exist?
+      if box_file_names.include?(file.basename) && proposed_file.exist?
+        @count += 1
+        puts @count + ' ' + file.inspect
+        ipr =  DB::ImageProgressRecord.find_from_path(proposed_file)
+        ipr.file_id = file.id
+        binding.pry unless ipr.save
+      end
+    end
+  end
+
   def add_meta_to_folder(object, folder)
     file = File.open(folder + 'meta.yml', 'w+')
     meta = {}
@@ -150,10 +165,12 @@ class ConsolePotato
     return unless parent_box_folder
     local_parent_box_folder = create_box_folder(parent_box_folder, path)
     sync_folder_with_box(parent_box_folder, local_parent_box_folder)
+    update_database(parent_box_folder, local_parent_box_folder)
     add_meta_to_folder(parent_box_folder, local_parent_box_folder)
     parent_box_folder.folders.each do |box_folder|
       object_subfolder_path = create_box_folder(box_folder, local_parent_box_folder)
       sync_folder_with_box(box_folder, object_subfolder_path )
+      update_database(box_folder, object_subfolder_path)
       add_meta_to_folder(box_folder, object_subfolder_path)
     end
   end
@@ -189,6 +206,11 @@ class ConsolePotato
       proposed_file = folder + a.name
       if !proposed_file.exist? || proposed_file.size == 0
         sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+        ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
+        ipr.file_id = sf_attachment.id
+        @count += 1
+        puts @count + ' ' + a.id
+        binding.pry unless ipr.save
         File.open(proposed_file, 'w') do |f|
           f.write(sf_attachment.api_object.Body)
         end
@@ -266,8 +288,6 @@ class ConsolePotato
     box_file_names = box_folder.files.map(&:name)
     path.each_child.select(&:file?).each do |file|
       FileUtils.rm(file) unless box_file_names.include?(file.split.last.to_s)
-    end
-    path.each_child.select(&:file?).each do |file|
       download_from_box( file, path )
     end
   end
@@ -418,11 +438,12 @@ ensure
     new_count = w.tasks.size
     if new_count == count
       kill_switch += 1
+      puts 'kill switch at ' + kill_switch.to_s if kill_switch > 10
     else
       count = new_count
       kill_switch = 0
     end
-    binding.pry if kill_switch > 60*5
+    binding.pry if kill_switch > 60
     puts '\''*88
     puts "task size: #{w.tasks.size}"
     if count % 1000 == 0
