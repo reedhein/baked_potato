@@ -1,0 +1,69 @@
+%h5
+  = sf_case.meta[:subject]
+  %p{style: 'float:right'}
+    = sf_case.meta[:case_number]
+  %hr
+%ul.nav.nav-tabs#mainTabs{role: 'tablist'}
+  %li.nav-item.case
+    %a.nav-link.active{href: "#case#{sf_case.meta[:case_number]}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:case_number]}Action"}
+      Actions
+  %li.nav-item.case
+    %a.nav-link{href: "#case#{sf_case.meta[:case_number]}Box", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:case_number]}Box"}
+      Box
+  %li.nav-item.case
+    %a.nav-link{href: "#case#{sf_case.meta[:case_number]}Salesforce", role:'tab', 'data-toggle': 'tab', 'data-target':   "#case#{sf_case.meta[:case_number]}Salesforce"}
+      Salesforce Native
+  %ul.nav.nav-tabs{role: 'tablist'}
+    %li.nav-item
+  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;', class: "case#{sf_case.meta[:case_number]}"}
+
+    .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action"}
+      - sf_case.box_folders.each do |box_folder|
+        .clearfix
+        %button.btn{style: 'margin-top: 1em'}
+          move to: #{box_folder.meta[:name]}
+
+    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
+      %form
+        %ul{style: 'padding-left: 0px; list-style-type: none'}
+          - sf_case.box_folders.each do |folder|
+            %li
+              %fieldset
+                %h3
+                  = folder.meta[:name]
+                %ul.list-group
+                  - folder.files.each do |file|
+                    %li.list-group-item
+                      .text-xs-left
+                        %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black; float:left'}
+                        .actions{style: 'float:left'}
+                          .tag.tag-primary
+                            rename
+                      .clearfix
+                      = file.path.basename.to_s
+
+    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Salesforce", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
+      %ul
+        - sf_case.files.each do |file|
+          %li{style: 'box-shadow: 0 0 1px 1px black; list-style-type: none; display: inline-block; float: left; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' }
+            %i.btn.btn-default.fa.fa-2x{class: iconify(file)}
+            .clearfix
+            = file.path.basename.to_s
+
+  %p{style: 'float:right'}
+    %a{href: "na34.salesforce.com/#{sf_case.id}"}
+      %button.btn-warning
+        Go to original
+    %a{href: "localhost:4545/#{sf_case.id}"}
+      %button.btn-success
+        Go to kitty
+
+:css
+  .btn:hover {
+    color: rgba(255, 255, 255, 1);
+    box-shadow: 0 5px 15px rgba(145, 92, 182, .4);
+  }
+  .glow {
+    color: rgba(255, 255, 255, 1);
+    box-shadow: 0px 0px 45px rgba(145, 92, 182, 1);
+  }

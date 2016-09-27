@@ -1,0 +1,57 @@
+.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
+  %ul.nav.nav-tabs#mainTabs{role: 'tablist'}
+    %li.nav-item.opp
+      %a.nav-link.active{href: '#fileDetails', role:'tab', 'data-toggle': 'tab', 'data-target': '#fileDetails'}
+        =@image.name.to_s[0..12]
+    %li.nav-item.opp
+      %a.nav-link{href: '#boxFolders', role:'tab', 'data-toggle': 'tab', 'data-target': '#boxFolders'}
+        Box
+    %li.nav-item.opp
+      %a.nav-link{href: '#salesforceAttachments', role:'tab', 'data-toggle': 'tab', 'data-target':  '#salesforceAttachments'}
+        Salesforce Native
+  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
+    .nav-pane.opportunity.fade.in.active#fileDetails{role: 'tabpanel'}
+      %h3
+        Name:
+      %p
+        =@image.name
+      %h3
+        Location:
+      %p
+        =@image.path
+      %h3
+        Actions:
+      - @image.opportunity.box_folders.each do |box_folder|
+        %button.btn
+          move to: #{box_folder.meta[:name]}
+      %button.btn
+        Do Nothing & Mark complete
+    .nav-pane.opportunity.fade#boxFolders{role: 'tabpanel', style: 'display: none'}
+      %form
+        %ul{style: 'padding-left: 0px;list-style-type: none'}
+          - opportunity.box_folders.each do |folder|
+            %li
+              %fieldset
+                %h3
+                  = folder.meta[:name]
+                %ul.list-group
+                  - folder.files.each do |file|
+                    -# %li{style: 'box-shadow: 0 0 1px 1px black; list-style-type: none; display: inline-block; float: left; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' }
+                    %li.list-group-item
+                      -# .form-check
+                      -#   %input.form-check-input{type: 'radio'}
+                      .text-xs-left
+                        %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+                        .actions{style: 'float:left'}
+                          .tag.tag-primary
+                            %h5
+                              rename
+                      .clearfix
+                      = file.path.basename.to_s
+    .nav-pane.opportunity.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
+      %ul
+        - opportunity.files.each do |file|
+          %li{style: 'box-shadow: 0 0 1px 1px black; list-style-type: none; display: inline-block; float: left; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' }
+            %i.btn.btn-default.fa.fa-lg{class: iconify(file)}
+            .clearfix
+            = file.path.basename.to_s

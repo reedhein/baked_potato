@@ -2,23 +2,34 @@
 %head
   %title #{@image.name}
   %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap.css'}
+  %link{ rel: 'stylesheet', href: 'stylesheets/font-awesome.min.css' }
   %script{src: "/js/jquery-3.1.1.min.js"}
   %script{src: "/js/jquery.raptorize.1.0.js"}
   %script{src: "/js/bootstrap.min.js"}
 %body{style: "background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
+  %nav.navbar.navbar-dark
+    %a.navbar-brand{href: '/'}
+      Kitten Clicker
+    %ul.nav.navbar-nav
+      %li.nav-item.active
+        %a.nav-link{href: '#'}
+          Home
+      %li.nav-item.active
+        %a.nav-link{href: '#'}
+          Login
   .container-fluid
     .row
       - case @image.ext
       - when '.pdf'
-        %embed.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "height: 40em; float: left"}
+        %embed.source-file.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "min-height: 40em; float: left; padding: 0px 0px"}
       - when '.png'
-        %img.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
+        %img.source-file.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
       - when '.jpg'
-        %img.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
+        %img.source-file.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
 
-      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em ;min-height: 40em'}
         %h2{style: 'float: left'}
-          Opportunity: #{@image.opportunity.meta[:name]}|
+          Opportunity: #{@image.opportunity.meta[:name]}
         %form{ action: 'categorize', method: "POST"}
           %input{type: :hidden, name: :path, value: @full_path}
           %input{type: :hidden, name: :type, value: @type}
@@ -26,55 +37,12 @@
           %input{type: :hidden, name: :fingerprint, value: 'fingerprint'}
         .actions{style: 'float: right'}
           %button.btn-warning
-            %a{href: "http://na34.salesforce.com/#{@opportunity.id}"}
+            %a{href: "http://na34.salesforce.com/#{@opportunity.id}", target: '_blank', style: 'color: white'}
               Go to Opportunity
-          %button.btn-secondary
-            Do Nothing
           %button.btn-success#kittyButton
             Kitty
 
-        .col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: rgba(256, 256, 256, .6); padding: 2em'}
-          %ul.nav.nav-tabs#mainTabs{role: 'tablist'}
-            %li.nav-item
-              %a.nav-link.active{href: '#fileDetails', role:'tab', 'data-toggle': 'tab', 'data-target': '#fileDetails'}
-                =@image.name.to_s[0..12]
-            %li.nav-item
-              %a.nav-link{href: '#boxFolders', role:'tab', 'data-toggle': 'tab', 'data-target': '#boxFolders'}
-                Box
-            %li.nav-item
-              %a.nav-link{href: '#salesforceAttachments', role:'tab', 'data-toggle': 'tab', 'data-target':  '#salesforceAttachments'}
-                Salesforce Native
-          .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
-            .nav-pane.fade.in.active#fileDetails{role: 'tabpanel'}
-              %h3
-                Name:
-              %p
-                =@image.name
-              %h3
-                Location:
-              %p
-                =@image.path
-              %h3
-                Actions:
-              - @image.opportunity.box_folders.each do |box_folder|
-                %button.btn
-                  move to: #{box_folder.meta[:name]}
-              %button.btn
-                Do Nothing & Mark complete
-            .nav-pane.fade#boxFolders{role: 'tabpanel', style: 'display: none'}
-              %ul
-                - @opportunity.box_folders.each do |folder|
-                  %li
-                    = folder.meta[:name]
-                    %ul
-                      -folder.files.each do |file|
-                        %li
-                          = file.path.basename.to_s
-            .nav-pane.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
-              %ul
-                - @opportunity.files.each do |file|
-                  %li
-                    = file.path.basename.to_s
+        =partial(:opportunity, locals: {opportunity: @opportunity})
 
 
     %br
@@ -83,30 +51,26 @@
     .row
       .clearfix
       - @cases.each_with_index do |sf_case, i|
-        .card.col-xl-3{style: 'background: rgba(256, 256, 256, .8);'}
+        .card.col-xl-3{style: 'background: rgba(256, 256, 256, .8); max-height: 25em, overflow: scroll'}
           .card-block
-            %h4
-              = sf_case.meta[:subject]
-              %hr
-              %p{style: 'float:right'}
-                = sf_case.meta[:case_number]
-            %p
-              Actions:
-            - sf_case.box_folders.each do |box_folder|
-              .clearfix
-              %button.btn{style: 'margin-top: 1em'}
-                move to: #{box_folder.meta[:name]}
-            %p{style: 'float:right'}
-              %button.btn-warning
-                Go to original
-              %button.btn-success
-                Go to kitty
+            =partial(:case, locals: {sf_case: sf_case, index: i})
   :javascript
     $(document).ready(function() {
       $('#kittyButton').raptorize();
-      $('.nav-item a').click(function(e) {
+      $('.nav-item.opp a').click(function(e) {
         e.preventDefault()
-        debugger
+        $('.nav-pane.opportunity').hide()
+        $('.nav-pane'+ $(this).attr('href')).show()
       })
-    })
+      $('.nav-item.case a').click(function(e) {
+        e.preventDefault()
+        id = $(this).attr('href')
+        $('.nav-pane.case' + id.substr(1,-1) ).hide()
+        $('.nav-pane' + id).show()
+      })
+      $('.btn').hover(
+        function(){ $('.source-file').addClass('glow') },
+        function(){ $('.source-file').removeClass('glow') }
+      );
+    });
     
