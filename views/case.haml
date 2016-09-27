@@ -15,9 +15,9 @@
       Salesforce Native
   %ul.nav.nav-tabs{role: 'tablist'}
     %li.nav-item
-  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;', class: "case#{sf_case.meta[:case_number]}"}
+  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
 
-    .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action"}
+    .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action", class: "case#{sf_case.meta[:case_number]}"}
       - sf_case.box_folders.each do |box_folder|
         .clearfix
         %button.btn{style: 'margin-top: 1em'}
@@ -51,7 +51,7 @@
             = file.path.basename.to_s
 
   %p{style: 'float:right'}
-    %a{href: "na34.salesforce.com/#{sf_case.id}"}
+    %a{href: "http://na34.salesforce.com/#{sf_case.id}", target: '_blank'}
       %button.btn-warning
         Go to original
     %a{href: "localhost:4545/#{sf_case.id}"}

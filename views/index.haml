@@ -21,7 +21,7 @@
     .row
       - case @image.ext
       - when '.pdf'
-        %embed.source-file.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "min-height: 40em; float: left; padding: 0px 0px"}
+        %embed.source-file.col-sm-6.col-md-5.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "min-height: 40em; float: left; padding: 0px 0px"}
       - when '.png'
         %img.source-file.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
       - when '.jpg'
@@ -64,8 +64,10 @@
       })
       $('.nav-item.case a').click(function(e) {
         e.preventDefault()
-        id = $(this).attr('href')
-        $('.nav-pane.case' + id.substr(1,-1) ).hide()
+        var id = $(this).attr('href')
+        console.log('id: ', id)
+        $('.nav-pane.' + id.substring(1,13) ).hide()
+        console.log('substring: ', '.nav-pane.' + id.substring(1,13))
         $('.nav-pane' + id).show()
       })
       $('.btn').hover(
