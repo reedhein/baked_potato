@@ -13,7 +13,6 @@ module DB
     property :complete,      Boolean, default: false
 
     def self.create_new_from_path(path)
-      puts path
       path = Pathname.new(path)
       cf = CacheFolder.new(path)
       db = first_or_new(

@@ -17,7 +17,7 @@ class ConsolePotato
     @sf_client            = Utils::SalesForce::Client.instance
     @box_client           = Utils::Box::Client.instance
     @worker_pool          = WorkerPool.instance
-    @browser_tool         = BrowserTool.new
+    @browser_tool         = BrowserTool.new(1)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s

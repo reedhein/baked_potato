@@ -5,10 +5,16 @@ require 'classifier-reborn'
 require_relative './lib/utils'
 require 'sass'
 require 'sass/plugin/rack'
+require 'sinatra/partial'
+
 class BakedPotato < Sinatra::Base
   set env: :development
   set port: 4545
   set :bind, '0.0.0.0'
+  configure do
+    register Sinatra::Partial
+    set :salesforce_partial, :erb
+  end
   @box_client = Utils::Box::Client.instance
   @sf_client  = Utils::SalesForce::Client.instance
 
@@ -42,7 +48,37 @@ class BakedPotato < Sinatra::Base
     path_array.join('/')
   end
 
+  helpers do
+    def iconify(file)
+      case file.path.extname.downcase
+        when '.pdf'
+          'fa-file-pdf-o'
+        when '.png', '.tif', '.jpeg', '.jpg'
+          'fa-file-image-o'
+        when '.xlsx'
+          'fa-table'
+        when '.docx', '.rtf', '.msg'
+          'fa-windows'
+        when '.gdoc', '.gsheet'
+          'fa-google'
+        when '.ini' , '.txt', '.doc'
+          'fa-file-text-o'
+        when '.url'
+          'fa-link'
+        when '.lnk'
+          'fa-external-link'
+        when '.htm', '.html'
+          'fa-code'
+        when '.db'
+          'fa-databas'
+        when '.zip'
+          'fa-file-archive-o'
+        else
+          'fa-file'
+      end
+    end
+  end
+
   run! if app_file == $0
 end
-
 

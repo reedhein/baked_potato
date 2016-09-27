@@ -19,6 +19,7 @@ class DataPotato
     # puts 'finished deleting old'
     files = Dir.glob(CacheFolder.path + '**/*').delete_if do |entity|
       Pathname.new(entity).basename.to_s == 'meta.yml' ||
+        Pathname.new(entity).basename.to_s == '.DS_Store' ||
         Pathname.new(entity).directory?
     end
     files.map do |x|
