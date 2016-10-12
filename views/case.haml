@@ -13,40 +13,35 @@
   %li.nav-item.case
     %a.nav-link{href: "#case#{sf_case.meta[:case_number]}Salesforce", role:'tab', 'data-toggle': 'tab', 'data-target':   "#case#{sf_case.meta[:case_number]}Salesforce"}
       Salesforce Native
-  %ul.nav.nav-tabs{role: 'tablist'}
-    %li.nav-item
-  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
 
+  .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
     .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action", class: "case#{sf_case.meta[:case_number]}"}
       - sf_case.box_folders.each do |box_folder|
         .clearfix
-        %button.btn{style: 'margin-top: 1em'}
+        %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
           move to: #{box_folder.meta[:name]}
 
-    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
+    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none; max-height: 15em; overflow-y: scroll'}
       %form
-        %ul{style: 'padding-left: 0px; list-style-type: none'}
+        %ul.list-group{style: 'padding-left: 0px; list-style-type: none'}
           - sf_case.box_folders.each do |folder|
-            %li
+            %h3
+              = folder.meta[:name]
+            %li.list-group-item
               %fieldset
-                %h3
-                  = folder.meta[:name]
-                %ul.list-group
+                %ul.list-group{style: 'list-style-type: none'}
                   - folder.files.each do |file|
-                    %li.list-group-item
+                    %li.screenable{data: {id: BPImage.new(file).id}}
                       .text-xs-left
-                        %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black; float:left'}
-                        .actions{style: 'float:left'}
-                          .tag.tag-primary
-                            rename
-                      .clearfix
-                      = file.path.basename.to_s
+                        %i.btn.btn-default.fa.fa-2x{class: iconify(file)}
+                        .clearfix
+                        = file.path.basename.to_s
 
     .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Salesforce", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
       %ul
         - sf_case.files.each do |file|
-          %li{style: 'box-shadow: 0 0 1px 1px black; list-style-type: none; display: inline-block; float: left; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' }
-            %i.btn.btn-default.fa.fa-2x{class: iconify(file)}
+          %li.screenable{data: {id: BPImage.new(file).id} }
+            %i.btn.btn-default.fa.fa-2x{class: iconify(file), data: {id: BPImage.new(file).id}}
             .clearfix
             = file.path.basename.to_s
 
@@ -59,7 +54,7 @@
         Go to kitty
 
 :css
-  .btn:hover {
+  .btn.action:hover {
     color: rgba(255, 255, 255, 1);
     box-shadow: 0 5px 15px rgba(145, 92, 182, .4);
   }

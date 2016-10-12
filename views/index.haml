@@ -3,10 +3,13 @@
   %title #{@image.name}
   %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap.css'}
   %link{ rel: 'stylesheet', href: 'stylesheets/font-awesome.min.css' }
+  %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap-editable.css' }
   %script{src: "/js/jquery-3.1.1.min.js"}
-  %script{src: "/js/jquery.raptorize.1.0.js"}
   %script{src: "/js/bootstrap.min.js"}
-%body{style: "background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
+  %script{src: "/js/jquery.raptorize.1.0.js"}
+  %script{src: "/js/bootstrap-editable.js"}
+  %script{src: "/js/jquery.session.js"}
+%body{style: "background-color: #0C1017; background-image: url('domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
   %nav.navbar.navbar-dark
     %a.navbar-brand{href: '/'}
       Kitten Clicker
@@ -17,17 +20,36 @@
       %li.nav-item.active
         %a.nav-link{href: '#'}
           Login
+
+  .alert.alert-warning.alert-dismissible.fade.in{role: 'alert'}
+    %h4
+      test
+    %p
+      Hello test
+    %button.fa.fa-close.fa-lg.close{type: 'button', data: {dismiss: 'alert', 'aria-label': 'close'}}
+      -# %i.fa.fa-close.fa-lg
   .container-fluid
     .row
       - case @image.ext
       - when '.pdf'
-        %embed.source-file.col-sm-6.col-md-5.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "min-height: 40em; float: left; padding: 0px 0px"}
+        %embed.source-file.preview-window.col-sm-6.col-md-6.col-lg-6.col-xl-6{src: @full_path, type: 'application/pdf', style: "min-height: 40em; float: left; padding: 0px 0px"}
       - when '.png'
-        %img.source-file.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
+        %img.source-file.preview-window.col-sm-6.col-md-6.col-lg-6.col-xl-6{src:   @full_path, style: "height: 40em"}
       - when '.jpg'
-        %img.source-file.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
+        %img.source-file.preview-window.col-sm-6.col-md-6.col-lg-6.col-xl-6{src:  @full_path, style: "height: 40em"}
 
-      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em ;min-height: 40em'}
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgb(50,54,57); color: rgb(229,230,230); height: 9em; padding: 2em; margin-bottom: 2em'}
+        .file-data
+          %h3.inline-editable.image-name{style: 'float: left'}
+            Name:
+            %a{data: {id: @image.id, derp: 'yes'}}
+              #{@image.name}
+          .clearfix
+          %h3.image-location{style: 'float: left'}
+            Location:
+            .cloud_path
+              #{@image.cloud_path}
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em ;height: 29em; max-height: 30em'}
         %h2{style: 'float: left'}
           Opportunity: #{@image.opportunity.meta[:name]}
         %form{ action: 'categorize', method: "POST"}
@@ -50,11 +72,13 @@
     %br
     .row
       .clearfix
-      - @cases.each_with_index do |sf_case, i|
+      - @cases.each do |sf_case|
         .card.col-xl-3{style: 'background: rgba(256, 256, 256, .8); max-height: 25em, overflow: scroll'}
           .card-block
-            =partial(:case, locals: {sf_case: sf_case, index: i})
+            =partial(:case, locals: {sf_case: sf_case})
+
   :javascript
+    $.fn.editable.defaults.mode = 'inline';
     $(document).ready(function() {
       $('#kittyButton').raptorize();
       $('.nav-item.opp a').click(function(e) {
@@ -70,9 +94,50 @@
         console.log('substring: ', '.nav-pane.' + id.substring(1,13))
         $('.nav-pane' + id).show()
       })
-      $('.btn').hover(
+      $('.btn.action').hover(
         function(){ $('.source-file').addClass('glow') },
         function(){ $('.source-file').removeClass('glow') }
       );
+      $('.screenable').click(function(e){
+        id = $(this).data('id')
+        $.getJSON('file/' + id, function( data ) {
+          d = new Date();
+          woot = $('.preview-window').attr('src', data.image_path + '?' + d.getTime()).hide()
+          $('.preview-window').remove()
+          $('.container-fluid .row:first').prepend(woot)
+          $('.preview-window').fadeIn();
+          $('.file-data .image-name a').text(data.name)
+          $('.file-data .image-location .cloud_path').text(data.location)
+        })
+      })
+
+      $('.file-data a').editable(
+        {
+          type: 'text',
+          name: 'file_name',
+          pk: function(){console.log($(this).data('id')); return $(this).data('id')},
+          params: {key: $.session.get('box.key'), secret: $.session.get('box.secret')},
+          url: '/edit_file_name'
+        }
+      );
+      $('.action').click(function(e){
+        e.preventDefault()
+        alert('moving to: ' + $(this).data('id'))
+      })
     });
-    
+
+  :css
+    .screenable{
+      box-shadow: 0 0 1px 1px black;
+      list-style-type: none;
+      display: inline-block;
+      float: left;
+      width: 100px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+

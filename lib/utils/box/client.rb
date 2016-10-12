@@ -44,8 +44,8 @@ module Utils
         ::Boxr::Client.new(token,
             refresh_token:  user.box_refresh_token,
             identifier:     user.box_identifier,
-            client_id:     CredService.creds.box.client_id,
-            client_secret: CredService.creds.box.client_secret,
+            client_id:     CredService.creds.box.kitten_clicker.client_id,
+            client_secret: CredService.creds.box.kitten_clicker.client_secret,
             &token_refesh_callback
           )
       end

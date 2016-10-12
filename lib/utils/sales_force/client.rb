@@ -53,7 +53,7 @@ module Utils
             puts "Salesforce Token updated: #{Time.now.to_s}"
           end
 
-        cred_environment = CredService.creds.salesforce.public_send((Utils.environment.try(:to_sym) || :production))
+        cred_environment = CredService.creds.salesforce.public_send((Utils.environment.try(:to_sym) || :production)).kitten_clicker
         if Utils.environment == 'sandbox'
           refresh_token = user.salesforce_sandbox_refresh_token
           auth_token = user.salesforce_sandbox_auth_token
@@ -87,6 +87,7 @@ module Utils
       def create_klass(object_type)
         ['Utils', 'SalesForce', object_type.camelize].join('::').classify.constantize
       end
+
       def dynanmic_methods_for_client
         methods = @client.public_methods - self.public_methods
         methods.each do |meth|

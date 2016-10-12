@@ -31,9 +31,12 @@ class WorkerPool
             end
           end
         rescue ThreadError => e
+          ap e.backtrace
           puts e.inspect
+          sleep 5
           binding.pry
         rescue => e
+          ap e.backtrace
           puts e.inspect
         end
       end
@@ -54,6 +57,6 @@ class WorkerPool
     while @tasks.length < 1 do
       sleep WAIT_TIMEOUT
     end
-    puts 'breaking out'
+    puts @workers.inspect
   end
 end

@@ -8,6 +8,7 @@ module DB
     property :full_path,      FilePath
     property :moved_to,       FilePath
     property :date,           String, length: 255
+    property :sha1,           String, length: 255
     property :ext,            String, length: 255
     property :parent_type,    String, length: 255
     property :fingerprint,    String, length: 255
@@ -24,18 +25,18 @@ module DB
         parent_type: parent_type(path)
       )
       db.date = Date.today.to_s
+      binding.pry if db.new?
       db.save
       db
     end
 
     def self.find_from_path(path)
       path = Pathname.new(path)
-      cf = CacheFolder.new(path)
       db = first_or_new(
-        parent_id:   cf.id,
         ext:         path.extname,
         full_path:   path,
-        parent_type: parent_type(path)
+        parent_type: parent_type(path),
+        date:        Date.today.to_s
       )
       db.date = Date.today.to_s
       db
@@ -43,6 +44,10 @@ module DB
 
     def self.delete_old
       DB::ImageProgressRecord.destroy_all
+    end
+
+    def lock
+      self.update(locked: true)
     end
 
     private 

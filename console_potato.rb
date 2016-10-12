@@ -6,7 +6,7 @@ require 'watir'
 require 'watir-scroll'
 require_relative './lib/cache_folder'
 require_relative './lib/utils'
-require_relative 'data_potato'
+# require_relative 'data_potato'
 ActiveSupport::TimeZone[-8]
 
 class ConsolePotato
@@ -17,46 +17,21 @@ class ConsolePotato
     @sf_client            = Utils::SalesForce::Client.instance
     @box_client           = Utils::Box::Client.instance
     @worker_pool          = WorkerPool.instance
-    @browser_tool         = BrowserTool.new(1)
+    # @browser_tool         = BrowserTool.new(1)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
     @do_work             = true
     @download = @cached  = 0
     @meta                = DB::Meta.first_or_create(project: project)
+    binding.pry
     @offset_date         = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
     @offset_count        = @meta.offset_counter
   end
 
-  def process_work_queue
-    begin
-      @total = 0
-      while @do_work == true do
-        @do_work   = false
-        @processed = 0
-        finance_folders do |financial_folder|
-            opportunity = opp_from_finance_folder(finance_folder)
-            next unless opportunity
-            next if %w(006610000066wSZAAY 006610000068R7qAAE 00661000008PuHQAA0  00661000005RPAjAAO 006610000068JjuAAE 006610000066jcyAAA).include? opp.id
-            make_file(opportunity)
-            make_xml(opportunity)
-            make_db(opportunity)
-            make_box(opportunity)
-            make_native(opportunity)
-            opportunity.cases.each do |sf_case|
-              make_file(sf_case)
-              make_xml(sf_case)
-              make_db(sf_case)
-              make_box(sf_case)
-              make_native(sf_case)
-            end
-        end
-      end
-    end
-  end
-
   def produce_snapshot_from_scratch
-    finance_folders.each_slice(10) do |finance_folders|
+    # finance_folders.each_slice(10) do |finance_folders|
+    finance_folders.shuffle.each_slice(15).each do |finance_folders|
       cases = cases_from_finance_folders(finance_folders)
       opportunities = opps_from_finance_folder(finance_folders)
       opportunities.delete_if do |opp|
@@ -64,14 +39,12 @@ class ConsolePotato
       end
       opportunities.each do |opportunity|
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(opportunity) }
-        # migrated_cloud_to_local_machine(opportunity)
         opportunity.cases.each do |sf_case|
           @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(sf_case) }
         end
       end
       cases.each do |sf_case|
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(sf_case) }
-        # migrated_cloud_to_local_machine(sf_case)
       end
     end
   end
@@ -84,16 +57,31 @@ class ConsolePotato
   end
 
 
-  def update_database(box_folder, path)
-    box_file_names = box_folder.files.map(&:name)
-    path.each_child.select(&:file?).each do |file|
-      proposed_file = (path + file).exist?
-      if box_file_names.include?(file.basename) && proposed_file.exist?
-        @count += 1
-        puts @count + ' ' + file.inspect
-        ipr =  DB::ImageProgressRecord.find_from_path(proposed_file)
-        ipr.file_id = file.id
-        binding.pry unless ipr.save
+  def update_database(box_folder_files, path)
+    box_file_sha1s = box_folder_files.map(&:sha1)
+    relevant_children(path).each do |file|
+      proposed_file = (path + file)
+      begin
+        file_sha1 = Digest::SHA1.hexdigest(file.read)
+        puts "4"*88
+        puts file_sha1
+        puts "4"*88
+        if box_file_sha1s.include?(file_sha1)
+          @cached += 1
+          puts @cached.to_s + ' ' + file.inspect
+          box_file = box_folder_files.detect{|b| b.sha1 == file_sha1}
+          ipr =  DB::ImageProgressRecord.find_from_path(proposed_file)
+          ipr.file_id = box_file.id
+          ipr.sha1    = file_sha1
+          binding.pry unless ipr.save
+        end
+      rescue DataObjects::ConnectionError
+        puts 'db error'
+        sleep 0.1
+        retry
+      rescue  => e
+        ap e.backtrace
+        binding.pry
       end
     end
   end
@@ -133,20 +121,20 @@ class ConsolePotato
   end
 
   def bc
-    @browser_tool.close
+    # @browser_tool.close
   end
 
   private
 
   def cases_from_finance_folders(finance_folders)
-    cases = finance_folders.select{|f| f.name.match(/\d{8}/)}
+    cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}/)}
     return cases if cases.empty?
     query = construct_cases_query(cases)
     @sf_client.custom_query(query: query)
   end
 
   def opps_from_finance_folder(finance_folders)
-    opps = finance_folders.select do |finance_folder|
+    opps = [finance_folders].flatten.select do |finance_folder|
       !sf_name_from_ff_name(finance_folder).match(/^\d{8}/)
     end
     return [] unless opps.present?
@@ -164,13 +152,15 @@ class ConsolePotato
     parent_box_folder = get_parent_box_folder(sobject)
     return unless parent_box_folder
     local_parent_box_folder = create_box_folder(parent_box_folder, path)
-    sync_folder_with_box(parent_box_folder, local_parent_box_folder)
-    update_database(parent_box_folder, local_parent_box_folder)
+    parent_box_folder_files = parent_box_folder.files #keep from calling api
+    sync_folder_with_box(parent_box_folder_files , local_parent_box_folder)
+    update_database(parent_box_folder_files, local_parent_box_folder)
     add_meta_to_folder(parent_box_folder, local_parent_box_folder)
     parent_box_folder.folders.each do |box_folder|
       object_subfolder_path = create_box_folder(box_folder, local_parent_box_folder)
-      sync_folder_with_box(box_folder, object_subfolder_path )
-      update_database(box_folder, object_subfolder_path)
+      box_folder_files = box_folder.files #keep from calling api
+      sync_folder_with_box(box_folder_files, object_subfolder_path )
+      update_database(box_folder_files, object_subfolder_path)
       add_meta_to_folder(box_folder, object_subfolder_path)
     end
   end
@@ -189,9 +179,10 @@ class ConsolePotato
     begin
       parent_box_folder = @box_client.folder_from_id( sf_linked.box__folder_id__c )
     rescue Boxr::BoxrError => e
+      return nil if e.to_s =~ /404: (Not Found|Item is trashed)/
       ap e.backtrace
       puts e
-      visit_page_of_corresponding_id(sobject.id)
+      # visit_page_of_corresponding_id(sobject.id)
       sleep 3
       kill_counter += 1
       retry if kill_counter < 3
@@ -204,16 +195,30 @@ class ConsolePotato
     return unless attachments.present? #guard against nil or []
     attachments.each do |a|
       proposed_file = folder + a.name
-      if !proposed_file.exist? || proposed_file.size == 0
-        sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
-        ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
-        ipr.file_id = sf_attachment.id
-        @count += 1
-        puts @count + ' ' + a.id
-        binding.pry unless ipr.save
-        File.open(proposed_file, 'w') do |f|
-          f.write(sf_attachment.api_object.Body)
+      begin
+        if !proposed_file.exist? || proposed_file.size == 0
+          sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+          ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
+          ipr.file_id = sf_attachment.id
+          file_body   = sf_attachment.api_object.Body
+          ipr.sha1    = Digest::SHA1.hexdigest(file_body)
+          File.open(proposed_file, 'w') do |f|
+            f.write(file_body)
+          end
+          binding.pry unless ipr.save
+        else #it exists and we are doing temporary sha and id migration
+          ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
+          if ipr.file_id.nil? || ipr.sha1.nil?
+            sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+            ipr.file_id   = sf_attachment.id #this is the reason why this section needs an API call. temporary
+            ipr.sha1      = Digest::SHA1.hexdigest(proposed_file.read)
+            binding.pry unless ipr.save
+          end
         end
+      rescue DataObjects::ConnectionError
+        puts 'db error'
+        sleep 0.1
+        retry
       end
     end
   end
@@ -256,22 +261,6 @@ class ConsolePotato
     agent.goto('https://na34.salesforce.com/' + folder_id)
   end
 
-  def process_box_folders(box_folder, parent_folder)
-    destination = parent_folder + box_folder.id
-    destination.mkpath
-    box_folder.files.each do |file|
-      proposed_file = destination + file.name
-      if !proposed_file.present?
-        File.new(proposed_file) do |local_file|
-          local_file.write @box_client.download_file(file)
-        end
-      end
-    end
-    box_folder.folders.each do |folder|
-      process_box_folders(folder, destination)
-    end
-  end
-
   def find_directory_in_list(dir, list)
     list.detect{ |path| path.split.last.to_s == dir.split.last.to_s }
   end
@@ -284,22 +273,35 @@ class ConsolePotato
     Pathname.new([dest_path , file.name].join('/')).exist?
   end
 
-  def sync_folder_with_box(box_folder, path)
-    box_file_names = box_folder.files.map(&:name)
-    path.each_child.select(&:file?).each do |file|
-      FileUtils.rm(file) unless box_file_names.include?(file.split.last.to_s)
-      download_from_box( file, path )
+  def sync_folder_with_box(box_folder_files, local_folder_path)
+    box_file_sha1s  = box_folder_files.map(&:sha1)
+    path_file_sha1s = relevant_children(local_folder_path).map{|f| Digest::SHA1.hexdigest(f.read)}
+    box_folder_files.each do |box_file|
+      download_from_box( box_file, local_folder_path ) unless path_file_sha1s.include? box_file.sha1
+    end
+    relevant_children(local_folder_path).each do |file|
+      file_sha1 = Digest::SHA1.hexdigest(file.read)
+      if !box_file_sha1s.include?(file_sha1) || !box_folder_files.map(&:name).include?(file.basename.to_s)
+        FileUtils.rm(file)
+      end
     end
   end
 
   def download_from_box(file, path)
-    proposed_file = Pathname.new(path) + (file.try(:name) || file.split.last.to_s)
-    if !proposed_file.exist?
+    proposed_file = Pathname.new(path) + (file.try(:name) || file.basename.to_s)
+    if !proposed_file.exist? || (proposed_file.exist? && Digest::SHA1.hexdigest(proposed_file.read) != file.sha1)
       local_file = File.new(proposed_file, 'w')
+      binding.pry unless file.try(:id)
       local_file.write(@box_client.download_file(file))
       local_file.close
       @download += 1
       puts "Download number #{@download}"
+    end
+  end
+
+  def relevant_children(path)
+    path.each_child.select do |entity|
+      entity.file? && entity.basename.to_s != 'meta.yml' && entity.basename.to_s != '.DS_Store'
     end
   end
 
@@ -443,7 +445,7 @@ ensure
       count = new_count
       kill_switch = 0
     end
-    binding.pry if kill_switch > 60
+    binding.pry if kill_switch > 60*5
     puts '\''*88
     puts "task size: #{w.tasks.size}"
     if count % 1000 == 0
@@ -452,5 +454,5 @@ ensure
     end
     puts '\''*88
   end
-  cp.browser_tool.agents.each(&:close)
+  # cp.browser_tool.agents.each(&:close)
 end
