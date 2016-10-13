@@ -40,12 +40,12 @@ module Utils
           user.save
           puts "Box Token updated: #{Time.now.to_s}"
         end
-        token = user.box_access_token || CredService.creds.box.token
+        token = user.box_access_token || CredService.creds.box.utility_app.token
         ::Boxr::Client.new(token,
             refresh_token:  user.box_refresh_token,
             identifier:     user.box_identifier,
-            client_id:     CredService.creds.box.kitten_clicker.client_id,
-            client_secret: CredService.creds.box.kitten_clicker.client_secret,
+            client_id:     CredService.creds.box.utility_app.client_id,
+            client_secret: CredService.creds.box.utility_app.client_secret,
             &token_refesh_callback
           )
       end

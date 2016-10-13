@@ -53,7 +53,8 @@ module Utils
             puts "Salesforce Token updated: #{Time.now.to_s}"
           end
 
-        cred_environment = CredService.creds.salesforce.public_send((Utils.environment.try(:to_sym) || :production)).kitten_clicker
+        # cred_environment = CredService.creds.salesforce.public_send((Utils.environment.try(:to_sym) || :production)).kitten_clicker
+        cred_environment = CredService.creds.salesforce.public_send(:production)
         if Utils.environment == 'sandbox'
           refresh_token = user.salesforce_sandbox_refresh_token
           auth_token = user.salesforce_sandbox_auth_token

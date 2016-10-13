@@ -20,7 +20,7 @@ class BakedPotato < Sinatra::Base
   use Rack::Session::Pool
   use OmniAuth::Builder do
     provider :salesforce, CredService.creds.salesforce.production.api_key, CredService.creds.salesforce.production.api_secret, provider_ignores_state: true
-    provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.api_key, CredService.creds.salesforce.sandbox.api_secret, provider_ignores_state: true
+    provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.utility_app.api_key, CredService.creds.salesforce.sandbox.utility_app.api_secret, provider_ignores_state: true
   end
   @box_client = Utils::Box::Client.instance
   @sf_client  = Utils::SalesForce::Client.instance

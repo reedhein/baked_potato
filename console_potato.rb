@@ -425,7 +425,7 @@ class ConsolePotato
 end
 
 begin
-  cp = ConsolePotato.new()
+  cp = ConsolePotato.new(environment: :sandbox)
   cp.produce_snapshot_from_scratch
   # cp.populate_database
 rescue => e
