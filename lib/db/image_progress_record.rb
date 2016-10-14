@@ -50,12 +50,17 @@ module DB
       self.update(locked: true)
     end
 
-    private 
+    private
+
     def self.parent_type(path)
       parent = path.ascend.detect do |entity|
         entity.directory? && (entity.basename.to_s =~ /^500/ || entity.basename.to_s =~ /^006/)
       end
       parent.basename.to_s.match(/^500/) ? :case : :opportunity
     end
+
+    DataMapper.finalize
   end
 end
+
+DB::ImageProgressRecord.auto_migrate!

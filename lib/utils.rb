@@ -1,7 +1,12 @@
 require 'singleton'
 path = File.dirname(File.absolute_path(__FILE__) )
-Dir.glob(path + '/*').delete_if{ |file| File.directory?(file) || Pathname.new(file).extname != '.rb' }.each{ |file| require file }
-Dir.glob(path + '/utils/*').delete_if{ |file| File.directory?(file) }.each{ |file| require file }
+begin
+  Dir.glob(path + '/*').delete_if{ |file| File.directory?(file) || Pathname.new(file).extname != '.rb' }.reverse.each{ |file| require file }
+  Dir.glob(path + '/utils/*').delete_if{ |file| File.directory?(file) }.each{ |file| require file }
+rescue => e
+  ap e.backtrace
+  binding.pry
+end
 module Utils
   class << self
     attr_accessor :environment

@@ -1,20 +1,25 @@
 version: '2'
 services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: 789_random_password_987
+      POSTGRES_DB: baked_potato
+
   web:
     image: web
     build: .
     links:
-      - redis
+      - 'postgres:bp_postgres'
+    depends_on:
+      - postgres
     ports:
       - '4545:4545'
-  redis:
-    image: redis
-  sidekiq:
-    image: web
-    ports: 
-      - 80
-    depends_on:
-      - redis
-  postgres:
-    image: postgres
-
+  # redis:
+  #   image: redis
+  # sidekiq:
+  #   image: web
+  #   ports: 
+  #     - 80
+  #   depends_on:
+  #     - redis
