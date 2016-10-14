@@ -6,6 +6,7 @@ begin
     adapter: :postgres,
     password: '789_random_password_987'
   }
+  binding.pry
 rescue => e
   ap e.backtrace
   binding.pry

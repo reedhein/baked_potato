@@ -21,17 +21,6 @@ module Utils
         folder("5665821837")
       end
 
-      def create_folders(desired_folder_names) #depricated in favor for SFDC trigger
-        desired_folder_names.each_with_index do |folder, i|
-          parent_folder = desired_folder_names[0..i].join('/')
-          begin
-            @client.folder(parent_folder)
-          rescue Boxr::BoxError => e # the box folder could not be found
-            @client.create_folder(folder, parent_folder) if e.to_s =~ /Not Found/
-          end
-        end
-      end
-
       def self.client(user = DB::User.Doug)
         token_refesh_callback = lambda do |access, refresh, identifier| 
           user.box_access_token  = access
