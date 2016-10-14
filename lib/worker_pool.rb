@@ -16,7 +16,7 @@ class WorkerPool
     end
 
     @tasks = Queue.new
-    @workers = 8.times.map do |i|
+    @workers = 4.times.map do |i|
       Thread.new do |t|
         begin
           loop do
