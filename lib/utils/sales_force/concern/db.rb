@@ -15,7 +15,13 @@ module Utils
           )
           db.box_id = api_object.fetch('box__Folder_ID__c', nil)
           db.box__record_id__c = api_object.fetch('box__Record_ID__c', nil)
-          db.save
+          begin
+            db.save
+          rescue DataObjects::ConnectionError => e
+            puts e
+            sleep 0.02
+            retry
+          end
         end
 
         def migration_complete?

@@ -29,7 +29,12 @@ class BakedPotato < Sinatra::Base
   FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist?
 
   get '/' do
-    if session[:salesforcesandbox].nil? || session[:box].nil?
+    if session[:salesforcesandbox].nil? || session[:box].nil? 
+      redirect '/login'
+      return
+    end
+    if session[:box][:email].split('@').last != 'reedhein.com'
+      session.clear
       redirect '/login'
       return
     end
@@ -86,7 +91,7 @@ class BakedPotato < Sinatra::Base
 
   post '/edit_file_name' do
     email = session[:box][:email]
-    FileRename.new(email, params[:value], params[:pk])
+    Action::FileRename.new(email, params[:value], params[:pk]).peform
   end
 
   get '/unauthenticate' do
@@ -116,7 +121,8 @@ class BakedPotato < Sinatra::Base
   end
 
   post 'move_file' do
-    process_move(params[:source_id], params[:destination_folder_id])
+    email = session[:box][:email]
+    Action::FileMove.new(email: email, source_id: params[:source_id], destination_id: params[:destination_folder_id]).perform
   end
 
   get '/salesforce/:id' do

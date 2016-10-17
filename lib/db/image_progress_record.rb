@@ -6,7 +6,7 @@ module DB
     property :parent_id,      String, length: 255
     property :filename,       String, length: 255
     property :full_path,      FilePath
-    property :moved_to,       FilePath
+    property :moved_from,     FilePath
     property :date,           String, length: 255
     property :sha1,           String, length: 255
     property :ext,            String, length: 255
@@ -46,8 +46,27 @@ module DB
       DB::ImageProgressRecord.destroy_all
     end
 
+    def rename(name)
+      self.fullname = name
+      full_path.rename(name)
+      save
+    end
+
     def lock
       self.update(locked: true)
+    end
+
+    def move_to(destination_id, new_id)
+      record           = DB::ImageProgressRecord.first(parent_id: id)
+      path             = record.full_path.parent
+      self.moved_from  = self.full_path
+      self.full_path   = path + filename
+      self.parent_type = self.class.parent_type(path)
+      self.file_id     = new_id if new_id
+      save
+    rescue => e
+      ap e.backtrace
+      binding.pry
     end
 
     private

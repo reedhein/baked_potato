@@ -23,6 +23,18 @@ class CacheFolder
     @id || determine_id
   end
 
+  def move_to_folder_id(id)
+    record = DB::ImageProgressRecord.first(parent_id: id)
+    FileUtils.mv(path, record.full_path.parent)
+  rescue => e
+    ap e.backtrace
+    binding.pry
+  end
+
+  def renmae(name)
+    @path.rename(name)
+  end
+
   def meta
     if @type == :directory
       @meta ||= YAML.load(File.open(@path + 'meta.yml').read)

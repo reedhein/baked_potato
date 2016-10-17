@@ -4,6 +4,7 @@ module DB
     property :id, Serial
     property :created_date, DateTime
     property :box__record_id__c, String, length: 255
+    property :box__folder_id__c, String, length: 255
     property :sales_force_id, String, length: 255
     property :zoho_id, String, length: 255
     property :box_id, String, length: 255

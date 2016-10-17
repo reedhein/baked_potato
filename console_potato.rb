@@ -17,7 +17,7 @@ class ConsolePotato
     @sf_client            = Utils::SalesForce::Client.instance
     @box_client           = Utils::Box::Client.instance
     @worker_pool          = WorkerPool.instance
-    # @browser_tool         = BrowserTool.new(1)
+    @browser_tool         = BrowserTool.new(1)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
@@ -181,9 +181,10 @@ class ConsolePotato
       parent_box_folder = @box_client.folder_from_id( sf_linked.box__folder_id__c )
     rescue Boxr::BoxrError => e
       return nil if e.to_s =~ /404: (Not Found|Item is trashed)/
+      # binding.pry if e.to_s =~ /405/
       ap e.backtrace
       puts e
-      # visit_page_of_corresponding_id(sobject.id)
+      visit_page_of_corresponding_id(sobject.id)
       sleep 3
       kill_counter += 1
       retry if kill_counter < 3
