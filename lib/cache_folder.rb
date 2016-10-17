@@ -15,6 +15,10 @@ class CacheFolder
     RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
   end
 
+  def self.find_by_id(id)
+
+  end
+
   def file_id
     id
   end

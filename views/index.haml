@@ -1,6 +1,6 @@
 !!! 5
 %head
-  %title #{@image.name}
+  %title #{@image.name || @opportunity.name}
   %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap.css'}
   %link{ rel: 'stylesheet', href: 'stylesheets/font-awesome.min.css' }
   %link{ rel: 'stylesheet', href: 'stylesheets/bootstrap-editable.css' }
@@ -42,7 +42,7 @@
         .file-data
           %h3.inline-editable.image-name{style: 'float: left'}
             Name:
-            %a{data: {id: @image.id, derp: 'yes'}}
+            %a{data: {id: @image.id}}
               #{@image.name}
           .clearfix
           %h3.image-location{style: 'float: left'}
