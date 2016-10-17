@@ -63,4 +63,3 @@ module DB
   end
 end
 
-DB::ImageProgressRecord.auto_migrate!

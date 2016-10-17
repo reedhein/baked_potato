@@ -20,7 +20,7 @@ class BakedPotato < Sinatra::Base
   use Rack::Session::Pool
   use OmniAuth::Builder do
     provider :salesforce, CredService.creds.salesforce.production.api_key, CredService.creds.salesforce.production.api_secret, provider_ignores_state: true
-    provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.utility_app.api_key, CredService.creds.salesforce.sandbox.utility_app.api_secret, provider_ignores_state: true
+    provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.kitten_clicker.api_key, CredService.creds.salesforce.sandbox.kitten_clicker.api_secret, provider_ignores_state: true
   end
   @box_client = Utils::Box::Client.instance
   @sf_client  = Utils::SalesForce::Client.instance
@@ -29,6 +29,10 @@ class BakedPotato < Sinatra::Base
   FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist?
 
   get '/' do
+    if session[:salesforcesandbox].nil? || session[:box].nil?
+      redirect '/login'
+      return
+    end
     begin
       @image       = BPImage.random_unlocked
       @image.lock
@@ -64,13 +68,16 @@ class BakedPotato < Sinatra::Base
       auth_params = URI.escape(auth_params.collect{|k,v| "#{k}=#{v}"}.join('&'))
       redirect "/auth/salesforce?#{auth_params}"
     when 'box'
-      oauth_url = Boxr::oauth_url(URI.encode_www_form_component(CredService.creds.box.token))
+      oauth_url = Boxr::oauth_url(
+        URI.encode_www_form_component(CredService.creds.box.kitten_clicker.token),
+        client_id: CredService.creds.box.kitten_clicker.client_id
+      )
       redirect oauth_url
     when 'sandbox'
       auth_params = {
         display:     'page',
         immediate:   'false',
-        scope:       'full refresh_token',
+        scope:       'full',
       }
       auth_params = URI.escape(auth_params.collect{|k,v| "#{k}=#{v}"}.join('&'))
       redirect "/auth/salesforcesandbox?#{auth_params}"
@@ -78,11 +85,8 @@ class BakedPotato < Sinatra::Base
   end
 
   post '/edit_file_name' do
-    box_token         = session[:box_user][:access_token]
-    box_refresh_token = session[:box_user][:refresh_token]
-    sf_token          = session[:production]['credentials']['token']
-    sf_refresh_token  = session[:production]['credentials']['refresh_token']
-    FileRename.new(params[:value], params[:pk])
+    email = session[:box][:email]
+    FileRename.new(email, params[:value], params[:pk])
   end
 
   get '/unauthenticate' do
@@ -98,18 +102,19 @@ class BakedPotato < Sinatra::Base
     when 'salesforcesandbox'
       save_salesforce_credentials('salesforcesandbox')
     when 'box'
-      creds = Boxr::get_tokens(params['code'])
-      user = DB::User.first(email: creds.fetch('email'))
-      session[:box_user] = {}
-      session[:box_user][:name] = 'Doug Headley'
-      session[:box_user][:access_token]  = creds.fetch('access_token')
-      session[:box_user][:refresh_token] = creds.fetch('refresh_token')
+      # creds = Boxr::get_tokens(params['code'])
+      creds = Boxr::get_tokens(code=params[:code], client_id: CredService.creds.box.kitten_clicker.client_id, client_secret: CredService.creds.box.kitten_clicker.client_secret)
+      client = create_box_client_from_creds(creds)
+      user = populate_box_creds_to_db(client)
+      session[:box] = {}
+      session[:box][:email] = user.email
       redirect '/'
     else
       binding.pry
     end
     redirect '/'
   end
+
   post 'move_file' do
     process_move(params[:source_id], params[:destination_folder_id])
   end
@@ -168,18 +173,19 @@ class BakedPotato < Sinatra::Base
   private
 
   def save_salesforce_credentials(callback)
-    user = DB::User.Doug
-    user = DB::User.first(email: env.dig('omniauth.auth', 'user', 'email'))
+    user = DB::User.first_or_create(email: env.dig('omniauth.auth', 'extra', 'email'))
     binding.pry unless user
     begin
       if callback == 'salesforce'
         user.salesforce_auth_token     = env['omniauth.auth']['credentials']['token']
         user.salesforce_refresh_token  = env['omniauth.auth']['credentials']['refresh_token']
-        session[:production] = env['omniauth.auth']
+        session[:salesforce] = {}
+        session[:salesforce][:email] = user.email
       elsif callback == 'salesforcesandbox'
         user.salesforce_sandbox_auth_token     = env['omniauth.auth']['credentials']['token']
         user.salesforce_sandbox_refresh_token  = env['omniauth.auth']['credentials']['refresh_token']
-        session[:sandbox] = env['omniauth.auth']
+        session[:salesforcesandbox] = {}
+        session[:salesforcesandbox][:email] = user.email
       else
         fail "don't know how to handle this environment"
       end
@@ -188,6 +194,26 @@ class BakedPotato < Sinatra::Base
       binding.pry
     end
     user.save
+  end
+
+  def populate_box_creds_to_db(client)
+    email = client.current_user.login
+    user  = DB::User.first_or_create(email: email)
+    user.box_access_token   = client.access_token
+    user.box_refresh_token  = client.refresh_token
+    session[:box] = {}
+    session[:box][:email] = email
+    user.save
+    user
+  end
+
+  def create_box_client_from_creds(creds)
+    client = Boxr::Client.new(creds.fetch('access_token'),
+              refresh_token: creds.fetch('refresh_token'),
+              client_id:     CredService.creds.box.kitten_clicker.client_id,
+              client_secret: CredService.creds.box.kitten_clicker.client_secret
+            )
+    client
   end
 
   run! if app_file == $0

@@ -29,4 +29,3 @@ module DB
 
   end
 end
-DB::User.auto_migrate!

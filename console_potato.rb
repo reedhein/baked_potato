@@ -21,12 +21,13 @@ class ConsolePotato
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
-    @do_work             = true
-    @download = @cached  = 0
-    @meta                = DB::Meta.first_or_create(project: project)
+    @do_work              = true
+    @download = @cached   = 0
+    @meta                 = DB::Meta.first_or_create(project: project)
     binding.pry
-    @offset_date         = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
-    @offset_count        = @meta.offset_counter
+    @box_client           = Utils::Box::Client.instance
+    @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
+    @offset_count         = @meta.offset_counter
   end
 
   def produce_snapshot_from_scratch
@@ -425,7 +426,7 @@ class ConsolePotato
 end
 
 begin
-  cp = ConsolePotato.new(environment: :sandbox)
+  cp = ConsolePotato.new(environment: :production)
   cp.produce_snapshot_from_scratch
   # cp.populate_database
 rescue => e

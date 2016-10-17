@@ -16,7 +16,10 @@ module Utils
         kill_counter = 3
         fail ArgumentError if query.nil?
         begin
+          puts query
           result = @client.query(query)
+        rescue Restforce::UnauthorizedError
+          binding.pry #kill those threads
         rescue Faraday::ConnectionFailed
           if kill_counter > 1
             puts '*'*88
@@ -43,7 +46,7 @@ module Utils
       end
 
       def self.client(user = DB::User.Doug)
-        Restforce.log = true
+        Restforce.log = false
         Restforce.configure do |c|
           c.log_level = :info
         end

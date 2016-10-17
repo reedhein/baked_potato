@@ -11,4 +11,3 @@ module DB
     property :restart_count, Integer, default: 0
   end
 end
-DB::Meta.auto_migrate!
