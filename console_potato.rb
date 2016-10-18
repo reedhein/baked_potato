@@ -203,14 +203,14 @@ class ConsolePotato
       proposed_file = folder + a.name
       begin
         if !proposed_file.exist? || proposed_file.size == 0
-          # sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+          sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
           ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
-          # ipr.file_id = sf_attachment.id
+          ipr.file_id = sf_attachment.id
           ipr.filename  = proposed_file.basename.to_s
           ipr.parent_id = proposed_file.parent.basename.to_s
-          ipr.file_id = a.id
-          # file_body   = sf_attachment.api_object.Body
-          file_body   = a.api_object.Body
+          # ipr.file_id = a.id
+          file_body   = sf_attachment.api_object.Body
+          # file_body   = a.api_object.Body
           ipr.sha1    = Digest::SHA1.hexdigest(file_body)
           File.open(proposed_file, 'w') do |f|
             f.write(file_body)
@@ -221,9 +221,9 @@ class ConsolePotato
           ipr.filename  = proposed_file.basename.to_s
           ipr.parent_id = proposed_file.parent.basename.to_s
           if (ipr.file_id.nil? || ipr.sha1.nil?) && proposed_file.exist?
-            # sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
-            # ipr.file_id   = sf_attachment.id #this is the reason why this section needs an API call. temporary
-            ipr.file_id   = a.id #this is the reason why this section needs an API call. temporary
+            sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+            ipr.file_id   = sf_attachment.id #this is the reason why this section needs an API call. temporary
+            # ipr.file_id   = a.id #this is the reason why this section needs an API call. temporary
             ipr.sha1      = Digest::SHA1.hexdigest(proposed_file.read)
             binding.pry unless ipr.save
           end
