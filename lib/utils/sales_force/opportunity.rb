@@ -10,7 +10,7 @@ module Utils
         query = <<-EOF
           SELECT id, email, createddate, zoho_id__c,
           (SELECT id, createddate, body, title from notes),
-          (SELECT id, Body, Name FROM Attachments),
+          (SELECT id, Name FROM Attachments),
           (SELECT id, createddate, CreatedById, type, body, title FROM feeds)
           FROM contact
           WHERE accountid
@@ -25,7 +25,7 @@ module Utils
         query = <<-EOF
           SELECT id, createddate, zoho_id__c, subject,
           (SELECT id, createddate, body, title from notes),
-          (SELECT id, Body, Name FROM Attachments),
+          (SELECT id, Name FROM Attachments),
           (SELECT id, createddate, CreatedById, type, body, title FROM feeds)
           FROM account
           WHERE id
@@ -39,7 +39,7 @@ module Utils
       def cases
         query = <<-EOF
         SELECT id, createddate, closeddate, zoho_id__c, createdbyid, contactid, opportunity__c,
-        (SELECT id, Body, Name FROM Attachments),
+        (SELECT id, Name FROM Attachments),
         (SELECT id, createddate, CreatedById, type, body, title FROM feeds)
         FROM case
         WHERE opportunity__c = '#{id}'
