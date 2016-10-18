@@ -255,7 +255,7 @@ class ConsolePotato
     type = id[0] == 5 ? 'Case' : 'Opportunity'
     query = <<-EOF
       SELECT id, name,
-      (SELECT id, name FROM Attachments)
+      (SELECT id, body, name FROM Attachments)
       FROM #{type}
       WHERE id = '#{id}'
     EOF
@@ -325,7 +325,7 @@ class ConsolePotato
     <<-EOF
         SELECT Name, Id, createdDate,
         (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, opportunity__c FROM cases__r),
-        (SELECT Id, Name FROM Attachments)
+        (SELECT Id, Body, Name FROM Attachments)
         FROM Opportunity
         WHERE Name in #{names.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
       EOF
@@ -337,7 +337,7 @@ class ConsolePotato
     end
     query = <<-EOF
         SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
-        (SELECT Id, Name FROM Attachments)
+        (SELECT Id, Body, Name FROM Attachments)
         FROM case
         WHERE caseNumber in #{names.to_s.gsub('[','(').gsub(']',')').gsub('"', "'")}
       EOF
@@ -349,7 +349,7 @@ class ConsolePotato
       query = <<-EOF
           SELECT Name, Id, createdDate,
           (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
-          (SELECT Id, Name FROM Attachments)
+          (SELECT Id, Body, Name FROM Attachments)
           FROM Opportunity
           WHERE id = '#{id}'
         EOF
@@ -357,14 +357,14 @@ class ConsolePotato
       query = <<-EOF
         SELECT Name, Id, createdDate, Opportunity__c
         (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
-        (SELECT Id, Name FROM Attachments)
+        (SELECT Id, Body, Name FROM Attachments)
         FROM Opportunity WHERE Name = '#{name.gsub("'", %q(\\\'))}'
       EOF
     elsif @offset_date
       query = <<-EOF
         SELECT Name, Id, createdDate,
         (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject FROM cases__r),
-        (SELECT Id, Name FROM Attachments)
+        (SELECT Id, Body, Name FROM Attachments)
         FROM Opportunity
         CreatedDate >= #{@offset_date}
         ORDER BY CreatedDate ASC

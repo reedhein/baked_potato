@@ -16,7 +16,7 @@
           move to: #{box_folder.meta[:name]}
         .clearfix
       %button.btn.action
-        Do Nothing & Mark complete
+        Add scrubbed chatter message
     .nav-pane.opportunity.fade#boxFolders{role: 'tabpanel', style: 'display: none'}
       %form
         %ul{style: 'padding-left: 0px;list-style-type: none', class: 'droppable'}
@@ -30,7 +30,6 @@
                     %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
                       .text-xs-left
                         %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-                      %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
                       .clearfix
                       = file.path.basename.to_s
     .nav-pane.opportunity.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
@@ -39,6 +38,5 @@
           %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
             .text-xs-left
               %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-            %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
             .clearfix
             = file.path.basename.to_s

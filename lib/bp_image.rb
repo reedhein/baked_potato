@@ -1,5 +1,5 @@
 class BPImage
-  attr_accessor :db_image, :path, :sf_client, :box_client
+  attr_accessor :db_image, :path, :sf_client, :box_client, :db
 
   def initialize(image_path)
     @path           = image_path.is_a?(CacheFolder) ? Pathname.new(image_path.path) : Pathname.new(image_path)

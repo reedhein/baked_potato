@@ -20,6 +20,9 @@
         .clearfix
         %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
           move to: #{box_folder.meta[:name]}
+      .clearfix
+      %button.btn.action{style: 'margin-top: 1em'}
+        Add scrubbed chatter message
 
     .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none; max-height: 15em; overflow-y: scroll'}
       %form
@@ -34,7 +37,6 @@
                     %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
                       .text-xs-left
                         %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-                      %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
                       .clearfix
                       = file.path.basename.to_s
 
@@ -44,7 +46,6 @@
           %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
             .text-xs-left
               %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-            %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
             .clearfix
             = file.path.basename.to_s
 

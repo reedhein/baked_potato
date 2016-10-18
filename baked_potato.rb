@@ -165,7 +165,7 @@ class BakedPotato < Sinatra::Base
       @image       = BPImage.find_by_id(params[:id])
       {
         image_path: get_full_path,
-        name: @image.path.basename.to_s,
+        name: @image.db.filename,
         location: @image.cloud_path,
         id: @image.id
       }.to_json

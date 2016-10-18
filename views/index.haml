@@ -21,13 +21,13 @@
         %a.nav-link{href: '#'}
           Login
 
-  .alert.alert-warning.alert-dismissible.fade.in{role: 'alert'}
-    %h4
-      test
-    %p
-      Hello test
-    %button.fa.fa-close.fa-lg.close{type: 'button', data: {dismiss: 'alert', 'aria-label': 'close'}}
-      -# %i.fa.fa-close.fa-lg
+  -# .alert.alert-warning.alert-dismissible.fade.in{role: 'alert'}
+  -#   %h4
+  -#     test
+  -#   %p
+  -#     Hello test
+  -#   %button.fa.fa-close.fa-lg.close{type: 'button', data: {dismiss: 'alert', 'aria-label': 'close'}}
+  -#     -# %i.fa.fa-close.fa-lg
   .container-fluid
     .row
       - case @image.ext
@@ -40,14 +40,17 @@
 
       .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgb(50,54,57); color: rgb(229,230,230); height: 9em; padding: 2em; margin-bottom: 2em'}
         .file-data
-          %h3.inline-editable.image-name{style: 'float: left'}
-            Name:
+          %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable{id: @image.id, style: 'float: right'}
+          %h5.inline-editable.image-name{style: 'float: left'}
+            %b
+              Name:
             %a{data: {id: @image.id}}
               #{@image.name}
           .clearfix
-          %h3.image-location{style: 'float: left'}
-            Location:
-            .cloud_path
+          %h5.image-location
+            %b
+              Location:
+            %span.cloud_path
               #{@image.cloud_path}
       .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{style: 'background: rgba(256, 256, 256, .6); padding: 2em ;height: 29em; max-height: 30em'}
         %h2{style: 'float: left'}
@@ -108,6 +111,7 @@
           $('.preview-window').fadeIn();
           $('.file-data .image-name a').text(data.name)
           $('.file-data .image-name a').attr('href', data.id)
+          $('.file-data .btn-danger').attr('id', data.id)
           $('.file-data .image-location .cloud_path').text(data.location)
         })
       })
