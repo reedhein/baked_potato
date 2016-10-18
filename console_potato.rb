@@ -255,7 +255,7 @@ class ConsolePotato
     type = id[0] == 5 ? 'Case' : 'Opportunity'
     query = <<-EOF
       SELECT id, name,
-      (SELECT id, body, name FROM Attachments)
+      (SELECT id, Body, Name FROM Attachments)
       FROM #{type}
       WHERE id = '#{id}'
     EOF
