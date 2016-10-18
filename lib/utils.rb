@@ -1,4 +1,5 @@
 require 'singleton'
+require 'find'
 path = File.dirname(File.absolute_path(__FILE__) )
 begin
   Dir.glob(path + '/*').delete_if{ |file| File.directory?(file) || Pathname.new(file).extname != '.rb' }.reverse.each{ |file| require file }

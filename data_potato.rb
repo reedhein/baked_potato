@@ -22,6 +22,15 @@ class DataPotato
     end
   end
 
+  def populate_parent_id
+    DB::ImageProgressRecord.all.each_with_index do |ipr, i|
+      puts i if i % 100 == 0
+      if ipr.filename == nil
+        ipr.update(filename: ipr.full_path.basename.to_s)
+      end
+    end
+  end
+
   def create_db_for_file_strings(files)
     files.map.with_index do |file_string, i|
       puts i  if i % 100 == 0
@@ -56,11 +65,12 @@ end
 
 begin
   dp =  DataPotato.new
+  dp.populate_parent_id
   # dp.destroy_all
-  files = dp.get_files_from_cache_folder
-  records = dp.create_db_for_file_strings(files)
-  binding.pry
-  dp.add_meta_to_db_records(records)
+  # files = dp.get_files_from_cache_folder
+  # records = dp.create_db_for_file_strings(files)
+  # binding.pry
+  # dp.add_meta_to_db_records(records)
   puts 'awesome'
 rescue DataObjects::ConnectionError
   puts 'db error'

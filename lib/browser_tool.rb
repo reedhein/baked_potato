@@ -4,10 +4,10 @@ class BrowserTool
   def initialize(number_of_browsers = 4)
     @lightning     = false
     Utils.environment = :production
-    @sf_login      = CredService.creds.salesforce.public_send(Utils.environment).host
+    @sf_login      = CredService.creds.salesforce.public_send(Utils.environment).kitten_clicker_prod.host
     @sf_username   = CredService.creds.user.salesforce.public_send(Utils.environment).username
     @sf_password   = CredService.creds.user.salesforce.public_send(Utils.environment).password
-    @instance_url  = CredService.creds.salesforce.public_send(Utils.environment).instance_url
+    @instance_url  = CredService.creds.salesforce.public_send(Utils.environment).kitten_clicker_prod.instance_url
     @agents        = []
     @worker_pool = @wp = WorkerPool.instance
     number_of_browsers.times do |i|
@@ -16,9 +16,9 @@ class BrowserTool
       @agents << agent
       agent.driver.manage.timeouts.implicit_wait = 30
       agent.driver.manage.timeouts.page_load = 30
-      @screen_width  ||= agent.execute_script('return screen.width;')
-      @screen_height ||= agent.execute_script('return screen.height;')
-      setup_in_quadrant(agent, i)
+      # @screen_width  ||= agent.execute_script('return screen.width;')
+      # @screen_height ||= agent.execute_script('return screen.height;')
+      # setup_in_quadrant(agent, i)
       log_in_to_salesforce(agent)
     end
   end
@@ -94,6 +94,10 @@ class BrowserTool
     else
       Watir::Wait.until { agent.div(id: 'contentWrapper').wait_until_present }
     end
+  rescue => e
+    ap e.backtrace
+    puts e
+    binding.pry
   end
 
   def setup_in_quadrant(agent, quadrant)

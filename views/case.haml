@@ -23,25 +23,28 @@
 
     .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none; max-height: 15em; overflow-y: scroll'}
       %form
-        %ul.list-group{style: 'padding-left: 0px; list-style-type: none'}
+        %ul.list-group{style: 'padding-left: 0px; list-style-type: none', class: 'droppable'}
           - sf_case.box_folders.each do |folder|
             %h3
               = folder.meta[:name]
-            %li.list-group-item
+            %li.list-group-item{id: folder.id}
               %fieldset
-                %ul.list-group{style: 'list-style-type: none'}
+                %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
                   - folder.files.each do |file|
-                    %li.screenable{data: {id: BPImage.new(file).id}}
+                    %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
                       .text-xs-left
-                        %i.btn.btn-default.fa.fa-2x{class: iconify(file)}
-                        .clearfix
-                        = file.path.basename.to_s
+                        %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+                      %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
+                      .clearfix
+                      = file.path.basename.to_s
 
     .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Salesforce", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
       %ul
         - sf_case.files.each do |file|
-          %li.screenable{data: {id: BPImage.new(file).id} }
-            %i.btn.btn-default.fa.fa-2x{class: iconify(file), data: {id: BPImage.new(file).id}}
+          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+            .text-xs-left
+              %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+            %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
             .clearfix
             = file.path.basename.to_s
 

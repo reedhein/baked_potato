@@ -19,17 +19,26 @@ class BakedPotato < Sinatra::Base
   end
   use Rack::Session::Pool
   use OmniAuth::Builder do
-    provider :salesforce, CredService.creds.salesforce.production.api_key, CredService.creds.salesforce.production.api_secret, provider_ignores_state: true
-    provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.kitten_clicker.api_key, CredService.creds.salesforce.sandbox.kitten_clicker.api_secret, provider_ignores_state: true
+    # provider :salesforce, CredService.creds.salesforce.production.api_key, CredService.creds.salesforce.production.api_secret, provider_ignores_state: true
+    # provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.kitten_clicker.api_key, CredService.creds.salesforce.sandbox.kitten_clicker.api_secret, provider_ignores_state: true
+    provider :salesforce,
+      CredService.creds.salesforce.production.kitten_clicker_prod.api_key,
+      CredService.creds.salesforce.production.kitten_clicker_prod.api_secret,
+      provider_ignores_state: true
+    provider OmniAuth::Strategies::SalesforceSandbox,
+      CredService.creds.salesforce.production.kitten_clicker_prod.api_key,
+      CredService.creds.salesforce.production.kitten_clicker_prod.api_secret,
+      provider_ignores_state: true
   end
-  @box_client = Utils::Box::Client.instance
-  @sf_client  = Utils::SalesForce::Client.instance
+  @box_client = Utils::Box::Client.new
+  @sf_client  = Utils::SalesForce::Client.new
 
   image_path = Pathname.new('./public') + Date.today.to_s
   FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist?
 
   get '/' do
-    if session[:salesforcesandbox].nil? || session[:box].nil? 
+    authenticate_me(DB::User.Doug)
+    if session[:salesforce].nil? || session[:box].nil? 
       redirect '/login'
       return
     end
@@ -40,7 +49,6 @@ class BakedPotato < Sinatra::Base
     end
     begin
       @image       = BPImage.random_unlocked
-      @image.lock
     rescue DataObjects::ConnectionError
       puts 'db error'
       sleep 0.1
@@ -68,7 +76,7 @@ class BakedPotato < Sinatra::Base
       auth_params = {
         :display => 'page',
         :immediate => 'false',
-        :scope => 'full refresh_token',
+        :scope => 'full',
       }
       auth_params = URI.escape(auth_params.collect{|k,v| "#{k}=#{v}"}.join('&'))
       redirect "/auth/salesforce?#{auth_params}"
@@ -91,10 +99,10 @@ class BakedPotato < Sinatra::Base
 
   post '/edit_file_name' do
     email = session[:box][:email]
-    Action::FileRename.new(email, params[:value], params[:pk]).peform
+    Action::FileRename.new(email: email, rename: params[:value], file_id: params[:pk]).peform
   end
 
-  get '/unauthenticate' do
+  get '/logout' do
     # request.env['rack.session'] = {}
     session.clear
     redirect '/'
@@ -120,24 +128,52 @@ class BakedPotato < Sinatra::Base
     redirect '/'
   end
 
-  post 'move_file' do
+  post '/move_file' do
     email = session[:box][:email]
-    Action::FileMove.new(email: email, source_id: params[:source_id], destination_id: params[:destination_folder_id]).perform
+    updated_record = Action::FileMove.new(email: email,
+                        file_id: params[:file_id],
+                        source_id: params[:source_id],
+                        destination_id: params[:destination_id]
+                      ).perform
+    {status: 'success', destination_id: params[:destination_id], file_id: updated_record.file_id, original_id: params[:file_id]}.to_json
   end
 
+  post '/delete_file' do 
+    begin
+      email = session[:box][:email]
+      Action::FileDelete.new(email: email, file_id: params[:file_id]).perform
+      {status: 'success', file_id: params[:file_id]}.to_json
+    rescue => e
+      ap e.backtrace
+      puts e
+      binding.pry
+    end
+  end
+  
   get '/salesforce/:id' do
-
+    type = CacheFolder.folder_type_by_id(params[:id])
+    if type == :opportunity
+      @opportunity = CacheFolder.find_by_id(params[:id])
+    elsif type == :case
+      @case = CacheFolder.find_by_id(params[:id])
+    end
+    @cases = @opportunity.cases
   end
 
   get '/file/:id' do
-    @image       = BPImage.find_by_id(params[:id])
-    @image.lock
-    {
-      image_path: get_full_path,
-      name: @image.path.basename.to_s,
-      location: @image.cloud_path,
-      id: @image.id
-    }.to_json
+    begin
+      @image       = BPImage.find_by_id(params[:id])
+      {
+        image_path: get_full_path,
+        name: @image.path.basename.to_s,
+        location: @image.cloud_path,
+        id: @image.id
+      }.to_json
+    rescue DataObjects::ConnectionError => e
+      puts e
+      sleep 0.05
+      retry
+    end
   end
 
   def get_full_path
@@ -221,7 +257,12 @@ class BakedPotato < Sinatra::Base
             )
     client
   end
-
+  def authenticate_me(user)
+    session[:box] = {}
+    session[:box][:email] = 'doug@reedhein.com'
+    session[:salesforce] = {}
+    session[:salesforce][:email] = 'doug@reedhein.com'
+  end
   run! if app_file == $0
 
 end

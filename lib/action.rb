@@ -7,13 +7,24 @@ class Action
     @destination_id = destination_id
     @rename         = rename
     @file_id        = file_id
-    @record         = DB::ImageProgressRecord.first(@file_id)
+    @record         = get_record 
     @box_client     = Utils::Box::Client.new(@user)
     @sf_client      = Utils::SalesForce::Client.new(@user)
   end
 
   def perform
     fail 'subclass must invoke perform'
+  end
+
+  def get_record
+    records = DB::ImageProgressRecord.all(file_id: @file_id)
+    latest_record = nil
+    if records.count > 1 && records.map(&:sha1).uniq.count == 1
+      latest_record = records.sort_by{|r| Date.parse(r.date)}.last
+      records.each{|r| r.destroy unless r == latest_record}
+    end
+    binding.pry unless latest_record || records.first
+    latest_record || records.first
   end
 
   def folder_type_by_id(id)

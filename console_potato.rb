@@ -14,10 +14,10 @@ class ConsolePotato
   def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil)
     Utils.environment     = @environment = environment
     @id                   = id
-    @sf_client            = Utils::SalesForce::Client.instance
-    @box_client           = Utils::Box::Client.instance
+    @sf_client            = Utils::SalesForce::Client.new
+    @box_client           = Utils::Box::Client.new
     @worker_pool          = WorkerPool.instance
-    @browser_tool         = BrowserTool.new(1)
+    # @browser_tool         = BrowserTool.new(2)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
@@ -25,7 +25,7 @@ class ConsolePotato
     @download = @cached   = 0
     @meta                 = DB::Meta.first_or_create(project: project)
     binding.pry
-    @box_client           = Utils::Box::Client.instance
+    @box_client           = Utils::Box::Client.new
     @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
     @offset_count         = @meta.offset_counter
   end
@@ -72,6 +72,8 @@ class ConsolePotato
           puts @cached.to_s + ' ' + file.inspect
           box_file = box_folder_files.detect{|b| b.sha1 == file_sha1}
           ipr =  DB::ImageProgressRecord.find_from_path(proposed_file)
+          ipr.filename  = proposed_file.basename.to_s
+          ipr.parent_id = proposed_file.parent.basename.to_s
           ipr.file_id = box_file.id
           ipr.sha1    = file_sha1
           binding.pry unless ipr.save
@@ -204,6 +206,8 @@ class ConsolePotato
           # sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
           ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
           # ipr.file_id = sf_attachment.id
+          ipr.filename  = proposed_file.basename.to_s
+          ipr.parent_id = proposed_file.parent.basename.to_s
           ipr.file_id = a.id
           # file_body   = sf_attachment.api_object.Body
           file_body   = a.api_object.Body
@@ -214,6 +218,8 @@ class ConsolePotato
           binding.pry unless ipr.save
         else #it exists and we are doing temporary sha and id migration
           ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
+          ipr.filename  = proposed_file.basename.to_s
+          ipr.parent_id = proposed_file.parent.basename.to_s
           if (ipr.file_id.nil? || ipr.sha1.nil?) && proposed_file.exist?
             # sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
             # ipr.file_id   = sf_attachment.id #this is the reason why this section needs an API call. temporary
@@ -257,9 +263,9 @@ class ConsolePotato
   end
 
   def visit_page_of_corresponding_id(id)
-    @browser_tool.queue_work do |agent|
-      agent.goto('https://na34.salesforce.com/' + id)
-    end
+    # @browser_tool.queue_work do |agent|
+    #   agent.goto('https://na34.salesforce.com/' + id)
+    # end
   end
 
   def visit_page_of_corresopnding_folder(folder)
@@ -371,7 +377,7 @@ class ConsolePotato
 
   def query_frup(sobject)
     db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id) 
-    if db.present? && db.try(:box_id).present?
+    if db.present? && db.try(:box_id).present? && db.box__folder_id__c.present?
       db
     else
       @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'").first
@@ -407,8 +413,8 @@ class ConsolePotato
     end
     offensive_file.close
   end
+
   def create_folder_through_browser(opp)
-    binding.pry
     @browser_tool.create_folder(opp)
   end
 

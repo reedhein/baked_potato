@@ -4,9 +4,7 @@ class FileMove < Action
   end
 
   def perform
-    record = DB::ImageProgressRecord.first(file_id: @file_id)
     prep = [file_type_by_id(@file_id), folder_type_by_id(@destination_id)]
-    binding.pry
     new_id = nil
     case prep
     when [:salesforce, :opportunity], [:salesforce, :case]
@@ -33,13 +31,13 @@ class FileMove < Action
       Description: "Moved by #{@email} from #{@source_id} on #{Date.today.to_s}",
       ParentId: @destination_id
     )
-    binding.pry
+    @box_client.delete_file(@file_id) if attachment
     attachment.id
   end
 
   def move_sf_attachment_to_box_folder
     file = @box_client.upload_file(@record.full_path, @destination_id)
-    binding.pry
+    @sf_client.destroy('Attachment', @file_id) if file
     file.id
   end
 

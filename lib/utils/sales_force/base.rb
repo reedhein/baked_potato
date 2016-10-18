@@ -8,7 +8,7 @@ module Utils
       # include Inspector
       attr_reader :client, :zoho, :api_object
       def initialize(api_object)
-        @client             = Utils::SalesForce::Client.instance
+        @client             = Utils::SalesForce::Client.new
         @api_object         = api_object
         @storage_object     = convert_api_object_to_local_storage(api_object)
         @problems           = []

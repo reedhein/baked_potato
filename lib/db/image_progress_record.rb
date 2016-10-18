@@ -17,28 +17,29 @@ module DB
 
     def self.create_new_from_path(path)
       path = Pathname.new(path)
-      cf = CacheFolder.new(path)
       db = first_or_new(
-        parent_id:   cf.id,
+        parent_id:   path.parent.basename.to_s,
         ext:         path.extname,
-        full_path:   path,
+        filename:    path.basename.to_s,
         parent_type: parent_type(path)
       )
+      db.full_path =  path
       db.date = Date.today.to_s
-      binding.pry if db.new?
       db.save
       db
     end
 
     def self.find_from_path(path)
       path = Pathname.new(path)
-      db = first_or_new(
+      db   = first_or_new(
         ext:         path.extname,
-        full_path:   path,
-        parent_type: parent_type(path),
-        date:        Date.today.to_s
+        filename:    path.basename.to_s,
+        parent_id:   path.parent.basename.to_s,
+        parent_type: parent_type(path)
       )
+      db.full_path = path
       db.date = Date.today.to_s
+      db.save
       db
     end
 
@@ -48,7 +49,7 @@ module DB
 
     def rename(name)
       self.fullname = name
-      full_path.rename(name)
+      self.full_path = self.full_path.parent + name
       save
     end
 
@@ -57,13 +58,18 @@ module DB
     end
 
     def move_to(destination_id, new_id)
-      record           = DB::ImageProgressRecord.first(parent_id: id)
-      path             = record.full_path.parent
+      dest = DB::ImageProgressRecord.first(parent_id: destination_id) || Find.find(CacheFolder.path){|path| break Pathname.new(path) if Pathname.new(path).basename.to_s == destination_id}
+      if dest.is_a? DB::ImageProgressRecord
+        dest_path = dest.full_path.parent
+      else
+        dest_path = dest
+      end
       self.moved_from  = self.full_path
-      self.full_path   = path + filename
-      self.parent_type = self.class.parent_type(path)
+      self.full_path   = dest_path + filename
+      self.parent_type = self.class.parent_type(dest_path)
       self.file_id     = new_id if new_id
       save
+      self
     rescue => e
       ap e.backtrace
       binding.pry

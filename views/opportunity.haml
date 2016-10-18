@@ -19,27 +19,26 @@
         Do Nothing & Mark complete
     .nav-pane.opportunity.fade#boxFolders{role: 'tabpanel', style: 'display: none'}
       %form
-        %ul{style: 'padding-left: 0px;list-style-type: none'}
+        %ul{style: 'padding-left: 0px;list-style-type: none', class: 'droppable'}
           - opportunity.box_folders.each do |folder|
-            %li.list-group-item
+            %h3
+              = folder.meta[:name]
+            %li.list-group-item{id: folder.id}
               %fieldset
-                %h3
-                  = folder.meta[:name]
-                %ul.list-group
+                %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
                   - folder.files.each do |file|
                     %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
                       .text-xs-left
                         %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-                        .actions{style: 'float:left'}
-                          .tag.tag-primary
-                            %h5
-                              rename
+                      %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
                       .clearfix
                       = file.path.basename.to_s
     .nav-pane.opportunity.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
       %ul
         - opportunity.files.each do |file|
-          %li.screenable{data: {id: BPImage.new(file).id}}
-            %i.btn.btn-default.fa.fa-lg{class: iconify(file), data: {id: BPImage.new(file).id}}
+          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+            .text-xs-left
+              %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+            %i.btn.btn-danger.fa.fa-md.fa-trash.deleteable
             .clearfix
             = file.path.basename.to_s

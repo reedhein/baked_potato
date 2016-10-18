@@ -13,15 +13,13 @@ module Utils
             sales_force_id: api_object.fetch('Id'),
             object_type: api_object.fetch('attributes').fetch('type')
           )
-          db.box_id = api_object.fetch('box__Folder_ID__c', nil)
+          db.box__folder_id__c = api_object.fetch('box__Folder_ID__c', nil)
           db.box__record_id__c = api_object.fetch('box__Record_ID__c', nil)
-          begin
-            db.save
-          rescue DataObjects::ConnectionError => e
-            puts e
-            sleep 0.02
-            retry
-          end
+          db.save
+        rescue DataObjects::ConnectionError => e
+          puts e
+          sleep 0.02
+          retry
         end
 
         def migration_complete?

@@ -2,7 +2,6 @@ module Utils
   module Box
     class Client
       include Inspector
-      include Singleton
       attr_reader :client
       def initialize(user = DB::User.Doug)
         @client = self.class.client(user)

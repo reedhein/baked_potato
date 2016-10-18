@@ -4,9 +4,10 @@ class BPImage
   def initialize(image_path)
     @path           = image_path.is_a?(CacheFolder) ? Pathname.new(image_path.path) : Pathname.new(image_path)
     @db             = DB::ImageProgressRecord.find_from_path(@path)
+    binding.pry unless @db
     @cache_folder   = CacheFolder.new(@path)
-    @sf_client      = Utils::SalesForce::Client.instance
-    @box_client     = Utils::Box::Client.instance
+    @sf_client      = Utils::SalesForce::Client.new
+    @box_client     = Utils::Box::Client.new
   end
 
   def lock
@@ -24,10 +25,13 @@ class BPImage
   end
 
   def self.find_by_id(id)
-    db = DB::ImageProgressRecord.all(file_id: id)
-    # binding.pry if db.count > 1
-    bpi = self.new(db.first.full_path)
-    bpi.db_image = db
+    records = DB::ImageProgressRecord.all(file_id: id)
+    if records.count > 1 && records.map(&:sha1).uniq.count == 1
+      latest_record = records.sort_by{|r| Date.parse(r.date)}.last
+      records.each{|r| r.destroy unless r == latest_record}
+    end
+    bpi = self.new(records.first.full_path)
+    bpi.db_image = records.first
     bpi
   end
 

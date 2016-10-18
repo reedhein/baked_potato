@@ -16,7 +16,8 @@ class CacheFolder
   end
 
   def self.find_by_id(id)
-
+    record = DB::ImageProgressRecord.first(parent_id: id)
+    new(record.full_path.parent)
   end
 
   def file_id
@@ -28,8 +29,9 @@ class CacheFolder
   end
 
   def move_to_folder_id(id)
-    record = DB::ImageProgressRecord.first(parent_id: id)
-    FileUtils.mv(path, record.full_path.parent)
+    dest_path = DB::ImageProgressRecord.first(parent_id: id) || Find.find(@cache_folder){|path| break Pathname.new(path) if Pathname.new(path).basename.to_s == id}
+    dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
+    FileUtils.mv(@path, dest_path)
   rescue => e
     ap e.backtrace
     binding.pry
@@ -64,23 +66,23 @@ class CacheFolder
   end
 
   def self.parent_type(path)
-    case path.parent.basename.to_s
-    when /^(500|006)/
-      :salesforce
-    when /\d{10,}/
-      :box
-    end
+    id =  @path.parent.basename.to_s
+    folder_type_by_id(id)
   end
 
   def parent_type
-    case @path.parent.basename.to_s
+    id =  @path.parent.basename.to_s
+    self.class.folder_type_by_id(id)
+  end
+
+  def self.folder_type_by_id(id)
+    case id
     when /^(500|006)/
       :salesforce
     when /\d{10,}/
       :box
     end
   end
-
   def type
     @type ||= get_type
   end

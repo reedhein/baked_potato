@@ -4,7 +4,6 @@ module Utils
   module SalesForce
     class Client
       include Inspector
-      include Singleton
       attr_reader :client
 
       def initialize(user = DB::User.Doug)
@@ -67,11 +66,11 @@ module Utils
         end
         Restforce.new oauth_token: auth_token,
           refresh_token: refresh_token,
-          host: cred_environment.host,
-          instance_url: cred_environment.instance_url,
-          client_id:  cred_environment.api_key,
-          client_secret:  cred_environment.api_secret,
-          api_version:  cred_environment.api_version,
+          host: cred_environment.kitten_clicker_prod.host,
+          instance_url: cred_environment.kitten_clicker_prod.instance_url,
+          client_id:  cred_environment.kitten_clicker_prod.api_key,
+          client_secret:  cred_environment.kitten_clicker_prod.api_secret,
+          api_version:  cred_environment.kitten_clicker_prod.api_version,
           authentication_callback: update_user_tokens
       end
 

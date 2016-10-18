@@ -107,8 +107,28 @@
           $('.container-fluid .row:first').prepend(woot)
           $('.preview-window').fadeIn();
           $('.file-data .image-name a').text(data.name)
+          $('.file-data .image-name a').attr('href', data.id)
           $('.file-data .image-location .cloud_path').text(data.location)
         })
+      })
+
+      $('i.deleteable').click(function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        id_to_delete = $(this).parent().data('id')
+        debugger
+        delete_confirm = confirm('do you want to delete?')
+        if (delete_confirm) {
+          $.post('/delete_file',
+            {
+              file_id: id_to_delete
+            },
+            function(response) {
+              console.log(response)
+            }
+          )
+        }
+
       })
 
       $('.file-data a').editable(
@@ -122,7 +142,23 @@
       );
       $('.action').click(function(e){
         e.preventDefault()
-        alert('moving to: ' + $(this).data('id'))
+        lol_confirm = confirm("move: " + $('.file-data a').data('id') + "to: " + $(this).data('id'));
+        if (lol_confirm) {
+          $.post('/move_file',
+            {
+              destination_id: $(this).data('id'),
+              file_id: $('.file-data a').data('id'),
+            },
+            function(response) {
+              console.log(response)
+              home = $("ul.droppable li#" + response.destination_id )
+              item = $("li[data-id='" + response.original_id + "']")
+              home.append(item)
+              item.hide()
+            },
+            'json'
+          );
+        }
       })
     });
 
@@ -139,5 +175,12 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .tab-content > .active{
+      max-height: 15em;
+      overflow-y: scroll;
+    }
+    .list-group-item.screenable{
+      padding-left: 0px;
     }
 

@@ -1,6 +1,6 @@
 class BoxrMash
   def client
-    @client ||= Utils::Box::Client.instance
+    @client ||= Utils::Box::Client.new
   end
 
   def details

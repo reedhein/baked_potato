@@ -16,10 +16,10 @@
           Login
   .container-fluid{style: 'height: 100%; min-height: 100%'}
     .row
-      - if session[:salesforcesandbox] == nil
+      - if session[:salesforce] == nil
         .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{sytle: ''}
           .col-lg-3.offset-lg-4{style: 'padding: 25em 0em'}
-            %form{:id => "authenticate_form", :name => "authenticate_form", :action => "/authenticate/sandbox", :method => "post"}
+            %form{:id => "authenticate_form", :name => "authenticate_form", :action => "/authenticate/salesforce", :method => "post"}
               %button{id: 'salesforce_auth'} Authenticate using your salesforce credentials
       - else
         .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{sytle: ''}
