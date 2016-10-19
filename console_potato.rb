@@ -63,6 +63,7 @@ class ConsolePotato
   end
 
   def remove_unwanted_files_from_cache(sobject, folder)
+    return if sobject.attachments.nil?
     relevant_children(folder).each do |path|
       if !sobject.attachments.map(&:name).include?(path.basename.to_s)
         FileUtils.rm(path)
