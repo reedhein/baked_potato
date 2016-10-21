@@ -20,7 +20,7 @@ class ConsolePotato
     # @browser_tool         = BrowserTool.new(2)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
-    @dated_cache_folder   = RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
+    @dated_cache_folder   = determine_cache_folder
     @do_work              = true
     @download = @cached   = 0
     @meta                 = DB::Meta.first_or_create(project: project)
@@ -49,6 +49,11 @@ class ConsolePotato
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(sf_case) }
       end
     end
+  end
+
+  def sync_s_dive
+    @smb_client.cache
+    @smb_client.sync
   end
 
   def migrated_cloud_to_local_machine(sobject)
@@ -436,37 +441,13 @@ class ConsolePotato
       finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/
     end
   end
+
+  def determine_cache_folder
+    if RbConfig::CONFIG['host_os'] =~ /darwin/ 
+      Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s 
+    else 
+      Pathname.new('/home/doug/Sandbox/dated_cache_folder' ) + Date.today.to_s
+    end
+  end
 end
 
-begin
-  cp = ConsolePotato.new(environment: :production)
-  cp.produce_snapshot_from_scratch
-  # cp.populate_database
-rescue => e
-  ap e.backtrace
-  binding.pry
-ensure
-  w = WorkerPool.instance
-  count = w.tasks.size
-  kill_switch = 0
-  while w.tasks.size > 1 do 
-    sleep 1
-    new_count = w.tasks.size
-    if new_count == count
-      kill_switch += 1
-      puts 'kill switch at ' + kill_switch.to_s if kill_switch > 10
-    else
-      count = new_count
-      kill_switch = 0
-    end
-    binding.pry if kill_switch > 60*5
-    puts '\''*88
-    puts "task size: #{w.tasks.size}"
-    if count % 1000 == 0
-      puts "worker status: #{w.workers.map(&:inspect)}"
-      sleep 4
-    end
-    puts '\''*88
-  end
-  # cp.browser_tool.agents.each(&:close)
-end
