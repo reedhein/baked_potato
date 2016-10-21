@@ -24,7 +24,8 @@ class ConsolePotato
     @do_work              = true
     @download = @cached   = 0
     @meta                 = DB::Meta.first_or_create(project: project)
-    binding.pry
+    s = SMB.new
+    s.cache
     @box_client           = Utils::Box::Client.new
     @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
     @offset_count         = @meta.offset_counter

@@ -26,6 +26,7 @@ module Utils
           user.box_refresh_token = refresh
           user.box_identifier    = identifier
           user.save
+          binging.pry
           puts "Box Token updated: #{Time.now.to_s}"
         end
         token = user.box_access_token || CredService.creds.box.utility_app.token
