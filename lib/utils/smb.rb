@@ -18,6 +18,14 @@ class SMB
     smb.process_directory( smb.documents_path )
   end
 
+  def sync
+    cd(documents_path)
+    DB::SMBRecord.all.batch(1000).each do |record|
+      binding.pry
+      record.destory unless exist? record.path
+    end
+  end
+
   def cache
     process_directory( documents_path )
   end
