@@ -58,11 +58,25 @@ class ConsolePotato
 
   def migrated_cloud_to_local_machine(sobject)
     folder = create_folder(sobject)
-    add_attachments_to_path(sobject, folder)
+    sync_sobject_attachments_to_folder(sobject, folder)
     populate_local_box_attachments_for_sobject_and_path(sobject, folder)
     add_meta_to_folder(sobject, folder)
   end
 
+  def sync_sobject_attachments_to_folder(sobject, folder)
+    add_attachments_to_path(sobject, folder)
+    remove_unwanted_files_from_cache(sobject, folder)
+  end
+
+  def remove_unwanted_files_from_cache(sobject, folder)
+    return if sobject.attachments.nil?
+    relevant_children(folder).each do |path|
+      if !sobject.attachments.map(&:name).include?(path.basename.to_s)
+        FileUtils.rm(path)
+      end
+    end
+
+  end
 
   def update_database(box_folder_files, path)
     box_file_sha1s = box_folder_files.map(&:sha1)
