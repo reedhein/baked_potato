@@ -10,7 +10,7 @@ require_relative './lib/utils'
 ActiveSupport::TimeZone[-8]
 
 class ConsolePotato
-  attr_reader :browser_tool
+  attr_reader :browser_tool, :dated_cache_folder
   def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil)
     Utils.environment     = @environment = environment
     @id                   = id
@@ -24,8 +24,6 @@ class ConsolePotato
     @do_work              = true
     @download = @cached   = 0
     @meta                 = DB::Meta.first_or_create(project: project)
-    s = SMB.new
-    s.cache
     @box_client           = Utils::Box::Client.new
     @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
     @offset_count         = @meta.offset_counter
