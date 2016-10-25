@@ -2,6 +2,7 @@ secrets.yml
 dev.db
 **/*.orig
 **/*.swp
+**/*.swo
 public/201*
 Gemfile
 Gemfile.lock

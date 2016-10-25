@@ -37,6 +37,7 @@ class WorkerPool
           binding.pry
         rescue => e
           ap e.backtrace
+          sleep 5
           puts e.inspect
         end
       end

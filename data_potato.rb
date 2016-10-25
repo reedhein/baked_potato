@@ -13,6 +13,20 @@ class DataPotato
     DB::ImageProgressRecord.create_new_from_path(path) if path
   end
 
+  def delete_dumb_records
+    DB::SMBRecord.all.batch(1000).each_with_index do |record, i|
+      puts i
+      # binding.pry if i % 1000 == 0
+      if record.path[74] == record.path[75]
+        delete = false
+        puts record.path
+        # binding.pry if record.path =~ /2015/
+        puts record.name
+        record.destroy  if delete
+      end
+    end
+  end
+
   def get_files_from_cache_folder
     Dir.glob(CacheFolder.path + '**/*').delete_if.with_index do |entity, i|
       puts i if i % 100 == 0
@@ -65,7 +79,7 @@ end
 
 begin
   dp =  DataPotato.new
-  dp.populate_parent_id
+  dp.delete_dumb_records
   # dp.destroy_all
   # files = dp.get_files_from_cache_folder
   # records = dp.create_db_for_file_strings(files)

@@ -5,7 +5,10 @@ module DB
     property :file_id,        String, length: 255
     property :parent_id,      String, length: 255
     property :filename,       String, length: 255
-    property :full_path,      FilePath
+    property :mac_base_path,  FilePath, default: '/Users/voodoologic/Sandbox/dated_cache_folder'
+    property :linx_base_path, FilePath, default: '/home/doug/Sandbox/dated_cache_folder'
+    property :relative_path,  FilePath
+    property :full_path,      FilePath, length: 255, unique: true, index: true
     property :moved_from,     FilePath
     property :date,           String, length: 255
     property :sha1,           String, length: 255

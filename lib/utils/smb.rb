@@ -1,10 +1,12 @@
 class SMB
   require 'sambal'
+  attr_reader :smb_client
   def initialize
     host     = CredService.creds.smb.host
     user     = CredService.creds.smb.user
     password = CredService.creds.smb.password
-    @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA')
+    @worker_pool = WorkerPool.instance
+    @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA', columns: 500)
     dynanmic_methods_for_client
     @count  ||= 0
   end
@@ -20,10 +22,24 @@ class SMB
 
   def sync
     cd(documents_path)
-    DB::SMBRecord.all.batch(1000).each do |record|
-      binding.pry
-      record.destory unless exist? record.path
+    DB::SMBRecord.all.batch(1000).each_with_index do |record, i|
+      puts "#{i} testing #{record.path}"
+      if !self.exists? record.path
+        puts "deleting #{Pathname.new(record.path).basename}"
+        record.destroy
+      end
     end
+  rescue =>  e
+    ap e
+    retry
+  end
+
+  def exists?(record_path)
+    path        = Pathname.new(record_path).parent
+    parent_path = path.parent
+    file_name   = path.basename.to_s
+    query_string = parent_path.to_s.gsub(current_directory, '') << "/*"
+    ls(query_string).key? file_name
   end
 
   def cache
@@ -48,6 +64,9 @@ class SMB
       end
     end
     cd '..'
+  rescue => e
+    ap e.backtrace
+    return
   end
 
   def files
@@ -67,11 +86,15 @@ class SMB
   end
 
   def derive_path(entity)
-    response = cd '.'
-    path = response.message.split('smb:').last.strip.gsub("\\", '/').gsub("\r", '').chomp('>')
+    path = current_directory
     path + entity.first
   end
   private
+
+  def current_directory
+    response = cd '.'
+    response.message.split('smb:').last.strip.gsub("\\", '/').gsub("\r", '').chomp('>')
+  end
 
   def documents_path
     ['Client Management', "REED HEIN and ASSOCIATES",  "_Timeshare Exits"].join('/').prepend('/')

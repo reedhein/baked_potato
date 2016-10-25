@@ -1,5 +1,5 @@
 require 'sinatra'
-require 'rb-readline'
+require 'rb-readline' if RbConfig::CONFIG['host_os'] =~ /darwin/
 require 'pry'
 require 'awesome_print'
 require 'classifier-reborn'

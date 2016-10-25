@@ -1,46 +1,51 @@
 require_relative 'console_potato'
 class CronJob
+  attr_reader :cp
+  def initialize
+    @cp = ConsolePotato.new(environment: :production)
+    @worker_pool = WorkerPool.instance
+  end
 
   def remove_old_cache_folder
-    cp = ConsolePotato.new(environment: :production)
     cache_folder = cp.dated_cache_folder
+    if cache_folder.parent.each_child.count > 3
+      cache_folder.parent.each_child do |entity|
+        @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) } if !entity.file? && Date.parse(entity.basename) < (Date.today - 3.days)
+      end
+    end
     remove_date = (Date.today - 3.days).to_s
     folder_path_to_remove  = cache_folder.parent + remove_date
-    FileUtils.rm_r(folder_path_to_remove) if folder_path_to_remove.exist?
+    @worker_pool.tasks.push Proc.new{ FileUtils.rm_r(folder_path_to_remove) } if folder_path_to_remove.exist?
   end
 
   def copy_todays_folder_to_tomorrow
-    cp = ConsolePotato.new(environment: :production)
-    cache_folder = cp.dated_cache_folder
+    cache_folder = @cp.dated_cache_folder
     folder_to_copy = cache_folder.parent + Date.today.to_s
     day = 0
     until folder_to_copy.exist? do
-      binding.pry
       day += 1
       folder_to_copy = cache_folder.parent + (Date.today - day.day).to_s
     end
     destination_folder = cache_folder.parent + Date.tomorrow.to_s
-    FileUtils.cp_r(folder_to_copy, destination_folder)
+    @worker_pool.tasks.push Proc.new{ FileUtils.cp_r(folder_to_copy, destination_folder) } unless destination_folder.exist?
   end
 
   def reconcile_box_and_salesforce
-    cp = ConsolePotato.new(environment: :production)
-    cp.produce_snapshot_from_scratch
+    @cp.produce_snapshot_from_scratch
   end
 
   def reconcile_s_drive
-    cp = ConsolePotato
-    cp.sync_s_drive
+    @cp.sync_s_drive
   end
 
 end
 
+w = WorkerPool.instance
 cj = CronJob.new
 cj.remove_old_cache_folder
 cj.copy_todays_folder_to_tomorrow
-cj.reconcile_box_and_salesforce
 cj.reconcile_s_drive
-w = WorkerPool.instance
+cj.reconcile_box_and_salesforce
 count = w.tasks.size
 kill_switch = 0
 while w.tasks.size > 1 do

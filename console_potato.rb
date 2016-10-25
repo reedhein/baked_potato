@@ -23,6 +23,7 @@ class ConsolePotato
     @dated_cache_folder   = determine_cache_folder
     @do_work              = true
     @download = @cached   = 0
+    @smb_client           = SMB.new
     @meta                 = DB::Meta.first_or_create(project: project)
     @box_client           = Utils::Box::Client.new
     @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
@@ -49,9 +50,9 @@ class ConsolePotato
     end
   end
 
-  def sync_s_dive
+  def sync_s_drive
     @smb_client.cache
-    @smb_client.sync
+    @worker_pool.tasks.push Proc.new { @smb_client.sync }
   end
 
   def migrated_cloud_to_local_machine(sobject)

@@ -4,7 +4,7 @@ module DB
     include DataMapper::Resource
     property :id,   Serial
     property :name, String, length: 255
-    property :path, String, length: 255
+    property :path, String, length: 255, unique: true, index: true
 
     def self.create_from_smb_entity(smb_client, entity)
       response = smb_client.cd '.'
