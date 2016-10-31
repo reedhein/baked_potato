@@ -67,7 +67,7 @@
           %button.btn-success#kittyButton
             Kitty
 
-        =partial(:opportunity, locals: {opportunity: @opportunity})
+        = partial(:opportunity, locals: {opportunity: @opportunity})
 
 
     %br
@@ -105,7 +105,7 @@
         id = $(this).data('id')
         $.getJSON('file/' + id, function( data ) {
           d = new Date();
-          woot = $('.preview-window').attr('src', data.image_path + '?' + d.getTime()).hide()
+          woot = $('.preview-window').attr('src', data.image_path ).hide()
           $('.preview-window').remove()
           $('.container-fluid .row:first').prepend(woot)
           $('.preview-window').fadeIn();
