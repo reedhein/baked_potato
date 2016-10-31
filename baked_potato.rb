@@ -13,6 +13,7 @@ class BakedPotato < Sinatra::Base
   set env: :development
   set port: 4545
   set :bind, '0.0.0.0'
+  set :public_folder, 'public'
   configure do
     register Sinatra::Partial
     set :salesforce_partial, :erb
@@ -33,8 +34,8 @@ class BakedPotato < Sinatra::Base
   @box_client = Utils::Box::Client.new
   @sf_client  = Utils::SalesForce::Client.new
 
-  image_path = Pathname.new('./public') + Date.today.to_s
-  FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist?
+  image_path = Pathname.new(Dir.pwd + '/public') + Date.today.to_s
+  FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist? || image_path.symlink?
 
   get '/' do
     authenticate_me(DB::User.Doug)
