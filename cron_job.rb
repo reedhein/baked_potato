@@ -27,7 +27,10 @@ class CronJob
       folder_to_copy = cache_folder.parent + (Date.today - day.day).to_s
     end
     destination_folder = cache_folder.parent + Date.tomorrow.to_s
-    @worker_pool.tasks.push Proc.new{ FileUtils.cp_r(folder_to_copy, destination_folder) } unless destination_folder.exist?
+    # FileUtils.cp_r(folder_to_copy, destination_folder) unless destination_folder.exist?
+    system_call = "rsync -rv #{folder_to_copy.to_s}/ #{destination_folder.to_s}"
+    puts system_call
+    `#{system_call}`
   end
 
   def reconcile_box_and_salesforce
@@ -40,12 +43,25 @@ class CronJob
 
 end
 
+binding.pry
 w = WorkerPool.instance
 cj = CronJob.new
-cj.remove_old_cache_folder
-cj.copy_todays_folder_to_tomorrow
-cj.reconcile_s_drive
+# copy_thread = Thread.new { cj.copy_todays_folder_to_tomorrow }
+# remove_thread = Thread.new { cj.remove_old_cache_folder }
+copy_thread = Thread.new { sleep 1 }
+(60 * 60).downto(1) do |i|
+  puts "allowing copy to get head start"
+  sleep 1
+  puts "time left: #{i}"
+  if copy_thread.status == false || copy_thread.status.nil?
+    puts "copy finished"
+    break
+  end
+end
 cj.reconcile_box_and_salesforce
+# cj.reconcile_s_drive
+copy_thread.priority = 3
+# remove_thread.priority = 2
 count = w.tasks.size
 kill_switch = 0
 while w.tasks.size > 1 do
