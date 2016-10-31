@@ -13,9 +13,15 @@ module Utils
             sales_force_id: api_object.fetch('Id'),
             object_type: api_object.fetch('attributes').fetch('type')
           )
-          db.box__folder_id__c = api_object.fetch('box__Folder_ID__c', nil)
-          db.box__record_id__c = api_object.fetch('box__Record_ID__c', nil)
+          (api_object.keys || api_object.attributes.keys).each do |key|
+            next if key == "attributes" || key == "Id"
+            relevant_key = db.attributes.keys.detect { |db_key| db_key == key.downcase.to_sym }
+            next unless relevant_key
+            api_value = api_object.fetch(key, nil) || api_object.attributes.fetch(key, nil)
+            db.send("#{relevant_key.to_s}=", api_value)
+          end
           db.save
+          db
         rescue DataObjects::ConnectionError => e
           puts e
           sleep 0.02

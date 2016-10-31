@@ -21,7 +21,7 @@ module Utils
       end
 
       def self.client(user = DB::User.Doug)
-        token_refesh_callback = lambda do |access, refresh, identifier| 
+        token_refesh_callback = lambda do |access, refresh, identifier|
           user.box_access_token  = access
           user.box_refresh_token = refresh
           user.box_identifier    = identifier
@@ -44,7 +44,12 @@ module Utils
         methods = @client.public_methods - self.public_methods
         methods.each do |meth|
           define_singleton_method meth do |*args|
-            @client.send(meth, *args)
+            begin
+              @client.send(meth, *args)
+            rescue
+              @client = self.class.client(DB::User.Doug)
+              @client.send(meth, *args)
+            end
           end
         end
       end

@@ -6,6 +6,7 @@ class SMB
     user     = CredService.creds.smb.user
     password = CredService.creds.smb.password
     @worker_pool = WorkerPool.instance
+    @cache_folder = Pathname.new('/home/doug/Sandbox/s_drive/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits')
     @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA', columns: 500)
     dynanmic_methods_for_client
     @count  ||= 0
@@ -24,14 +25,50 @@ class SMB
     cd(documents_path)
     DB::SMBRecord.all.batch(1000).each_with_index do |record, i|
       puts "#{i} testing #{record.path}"
+      if Date.parse(record.date) && Date.parse(record.date) > Date.today
+        puts "skipping #{Pathname.new(record.path).basename}"
+        next
+      end
       if !self.exists? record.path
         puts "deleting #{Pathname.new(record.path).basename}"
         record.destroy
+      else
+        record.date = Date.today.to_s
       end
+      sleep 0
     end
   rescue =>  e
     ap e
     retry
+  end
+
+  def improved_sync
+    @cache_folder.each_child do |entity|
+      single_worker = Thread.new { improved_process_path_entity(entity) }
+      single_worker.priority = -1
+    end
+    Thread.new do
+      loop do
+        if single_work.status == false
+          DB::SMBRecord.all(:date.not => Date.today_s).destroy
+          break
+        elsif single_work.status.nil?
+          break
+        else
+          sleep 3
+        end
+      end
+    end
+  end
+
+  def improved_process_path_entity(entity)
+    if entity.directory?
+      entity.each_child do |enity|
+        improved_process_path_entity(entity)
+      end
+    else
+      DB::SMBRecord.create_from_path(entity)
+    end
   end
 
   def exists?(record_path)
@@ -43,7 +80,8 @@ class SMB
   end
 
   def cache
-    process_directory( documents_path )
+    # process_directory( documents_path )
+    improved_proces_path
   end
 
   def process_directory(directory)
@@ -62,6 +100,7 @@ class SMB
         puts @count
         DB::SMBRecord.create_from_smb_entity(@smb_client, entity)
       end
+      sleep 0
     end
     cd '..'
   rescue => e

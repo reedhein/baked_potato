@@ -58,6 +58,5 @@ class WorkerPool
     while @tasks.length < 1 do
       sleep WAIT_TIMEOUT
     end
-    puts @workers.inspect
   end
 end

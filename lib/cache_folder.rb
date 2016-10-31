@@ -12,7 +12,7 @@ class CacheFolder
   end
 
   def self.path
-    RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/cache_folder' ) + Date.today.to_s
+    RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/dated_cache_folder' ) + Date.today.to_s
   end
 
   def self.find_by_id(id)
@@ -42,11 +42,15 @@ class CacheFolder
   end
 
   def meta
-    if @type == :directory
-      @meta ||= YAML.load(File.open(@path + 'meta.yml').read)
-    else
-      @meta ||= YAML.load(File.open(@path.parent + 'meta.yml').read)
+    @meta ||= salesforce_parent
+  end
+
+  def salesforce_parent(_path = nil)
+    path = _path || @path
+    parent = path.ascend.detect do |entity|
+      entity.directory? && entity.basename.to_s =~ /^(500|006)/
     end
+    DB::SalesForceProgressRecord.first(sales_force_id: parent.basename)
   end
 
   def opportunity

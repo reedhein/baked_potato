@@ -5,10 +5,9 @@ module DB
     property :file_id,        String, length: 255
     property :parent_id,      String, length: 255
     property :filename,       String, length: 255
-    property :mac_base_path,  FilePath, default: '/Users/voodoologic/Sandbox/dated_cache_folder'
-    property :linx_base_path, FilePath, default: '/home/doug/Sandbox/dated_cache_folder'
+    property :mac_base_path,  FilePath, default: Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder')
+    property :linx_base_path, FilePath, default: Pathname.new('/home/doug/Sandbox/dated_cache_folder')
     property :relative_path,  FilePath
-    property :full_path,      FilePath, length: 255, unique: true, index: true
     property :moved_from,     FilePath
     property :date,           String, length: 255
     property :sha1,           String, length: 255
@@ -26,7 +25,7 @@ module DB
         filename:    path.basename.to_s,
         parent_type: parent_type(path)
       )
-      db.full_path =  path
+      db.relative_path =  path
       db.date = Date.today.to_s
       db.save
       db
@@ -40,7 +39,7 @@ module DB
         parent_id:   path.parent.basename.to_s,
         parent_type: parent_type(path)
       )
-      db.full_path = path
+      db.relative_path = path
       db.date = Date.today.to_s
       db.save
       db
@@ -78,16 +77,25 @@ module DB
       binding.pry
     end
 
+    def full_path
+      if RbConfig::CONFIG['host_os'] =~ /darwin/
+        mac_base_path + Date.today.to_s + relative_path
+      else
+        linx_base_path + Date.today.to_s + relative_path
+      end
+    end
+
     private
 
     def self.parent_type(path)
       parent = path.ascend.detect do |entity|
-        entity.directory? && (entity.basename.to_s =~ /^500/ || entity.basename.to_s =~ /^006/)
+        entity.to_s.split('/').last =~ /^500/ || entity.to_s.split('/').last =~ /^006/
       end
+      binding.pry if parent.nil?
       parent.basename.to_s.match(/^500/) ? :case : :opportunity
     end
 
-    DataMapper.finalize
   end
 end
+DataMapper.finalize
 
