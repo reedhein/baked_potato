@@ -51,8 +51,9 @@ class ConsolePotato
   end
 
   def sync_s_drive
-    @smb_client.cache
-    @worker_pool.tasks.push Proc.new { @smb_client.sync }
+    # @worker_pool.tasks.push Proc.new {  @smb_client.cache }
+    # @smb_client.sync
+    @smb_client.improved_sync
   end
 
   def migrated_cloud_to_local_machine(sobject)
@@ -83,9 +84,6 @@ class ConsolePotato
       proposed_file = (path + file)
       begin
         file_sha1 = Digest::SHA1.hexdigest(file.read)
-        puts "4"*88
-        puts file_sha1
-        puts "4"*88
         if box_file_sha1s.include?(file_sha1)
           @cached += 1
           puts @cached.to_s + ' ' + file.inspect
@@ -218,31 +216,42 @@ class ConsolePotato
   def add_attachments_to_path( sobject, folder )
     attachments = sobject.attachments
     return unless attachments.present? #guard against nil or []
-    attachments.each do |a|
+    attachments.each_with_index do |a, i|
       proposed_file = folder + a.name
+      relative_path = proposed_file.to_s.gsub(@dated_cache_folder, '')[1..-1]
+      binding.pry if relative_path.nil?
       begin
         if !proposed_file.exist? || proposed_file.size == 0
+          @not_there ||= 0
+          @not_there += 1
+          puts "\n"
+          puts "Not there: #{@not_there}"
+          if @not_there % 100 == 0
+            puts proposed_file
+          end
+          puts "\n"
           sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
-          ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
-          ipr.file_id = sf_attachment.id
-          ipr.filename  = proposed_file.basename.to_s
-          ipr.parent_id = proposed_file.parent.basename.to_s
-          # ipr.file_id = a.id
-          file_body   = sf_attachment.api_object.Body
-          # file_body   = a.api_object.Body
-          ipr.sha1    = Digest::SHA1.hexdigest(file_body)
+          ipr = DB::ImageProgressRecord.find_from_path(relative_path)
+          ipr.file_id       = sf_attachment.id if ipr.file_id.nil?
+          if ipr.sha1.nil?
+            file_body   = sf_attachment.api_object.Body
+            ipr.sha1    = Digest::SHA1.hexdigest(file_body)
+          end
           File.open(proposed_file, 'w') do |f|
             f.write(file_body)
           end
           binding.pry unless ipr.save
         else #it exists and we are doing temporary sha and id migration
-          ipr = DB::ImageProgressRecord.find_from_path(proposed_file)
-          ipr.filename  = proposed_file.basename.to_s
-          ipr.parent_id = proposed_file.parent.basename.to_s
-          if (ipr.file_id.nil? || ipr.sha1.nil?) && proposed_file.exist?
-            sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
-            ipr.file_id   = sf_attachment.id #this is the reason why this section needs an API call. temporary
-            # ipr.file_id   = a.id #this is the reason why this section needs an API call. temporary
+          ipr = DB::ImageProgressRecord.find_from_path(relative_path)
+          if  proposed_file.exist? && (ipr.file_id.nil? || ipr.sha1.nil?)
+            @there_but_not_fleshed_out ||= 0
+            @there_but_not_fleshed_out  += 1
+            puts "\n"
+            puts "Not fleshed out #{@there_but_not_fleshed_out}"
+            puts "file_id: #{ipr.file_id}"
+            puts "sha1: #{ipr.sha1}"
+            puts "\n"
+            ipr.file_id   = a.id
             ipr.sha1      = Digest::SHA1.hexdigest(proposed_file.read)
             binding.pry unless ipr.save
           end
@@ -251,6 +260,9 @@ class ConsolePotato
         puts 'db error'
         sleep 0.1
         retry
+      rescue => e
+        ap e.backtrace
+        binding.pry
       end
     end
   end
@@ -351,14 +363,14 @@ class ConsolePotato
   end
 
   def construct_cases_query(groups)
-    names = groups.map do |c|
-      sf_name_from_ff_name(c)
+    case_numbers = groups.map do |c|
+      sf_number_from_ff_name(c)
     end
     query = <<-EOF
         SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
         (SELECT Id, Name FROM Attachments)
         FROM case
-        WHERE caseNumber in #{names.to_s.gsub('[','(').gsub(']',')').gsub('"', "'")}
+        WHERE caseNumber in #{case_numbers.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
       EOF
     query
   end
@@ -395,8 +407,8 @@ class ConsolePotato
   end
 
   def query_frup(sobject)
-    db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id) 
-    if db.present? && db.try(:box_id).present? && db.box__folder_id__c.present?
+    db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id)
+    if db.present? && db.box__folder_id__c.present?
       db
     else
       @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'").first
@@ -448,6 +460,21 @@ class ConsolePotato
     end
   end
 
+  def sf_number_from_ff_name(ff)
+    begin
+      match = ff.name.match(/(.+)\ -\ (\d+)Finance/) || ff.name.match(/^(\d{8,}) - Finance/)
+      if match[2]
+        match[2]
+      elsif match[1]
+        match[1]
+      else
+        binding.pry
+      end
+    rescue => e
+      ap e.backtrace
+      binding.pry
+    end
+  end
   def finance_folders(&block)
     @box_client.folder("7811715461").folders.select do |finance_folder|
       yield finance_folder if block_given? && finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/
