@@ -16,7 +16,7 @@ class BPImage
 
   def self.random_unlocked
     records = DB::ImageProgressRecord.all(parent_type: 'opportunity', locked: false, complete: false, ext: %w(.jpg .png .pdf), date: Date.today.to_s)
-    records.delete_if{|x| x.file_id.nil?}
+    records.delete_if{ |x| x.file_id.nil? || !Pathname.new(x.full_path).exist? }
     record = records.sample
     binding.pry unless record
     bpi = BPImage.new(record.full_path)
