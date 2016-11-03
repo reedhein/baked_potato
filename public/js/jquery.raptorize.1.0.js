@@ -30,8 +30,8 @@
 			// }
 			
 			//Raptor Vars
-			var raptorImageMarkup = '<img id="kitten" style="display: none" src="images/kitten.png" />'
-			var raptorAudioMarkup = '<audio id="kitten_meow" preload="auto"><source src="audio/Meow-sound-effect.mp3" /></audio>';	
+			var raptorImageMarkup = '<img id="kitten" style="display: none" src="/images/kitten.png" />'
+			var raptorAudioMarkup = '<audio id="kitten_meow" preload="auto"><source src="/audio/Meow-sound-effect.mp3" /></audio>';	
 			var locked = false;
 			
 			//Append Raptor and Style
