@@ -60,7 +60,7 @@ class ConsolePotato
     folder = create_folder(sobject)
     sync_sobject_attachments_to_folder(sobject, folder)
     populate_local_box_attachments_for_sobject_and_path(sobject, folder)
-    add_meta_to_folder(sobject, folder)
+    # add_meta_to_folder(sobject, folder)
   end
 
   def sync_sobject_attachments_to_folder(sobject, folder)
@@ -175,13 +175,13 @@ class ConsolePotato
     parent_box_folder_files = parent_box_folder.files #keep from calling api
     sync_folder_with_box(parent_box_folder_files , local_parent_box_folder)
     update_database(parent_box_folder_files, local_parent_box_folder)
-    add_meta_to_folder(parent_box_folder, local_parent_box_folder)
+    # add_meta_to_folder(parent_box_folder, local_parent_box_folder)
     parent_box_folder.folders.each do |box_folder|
       object_subfolder_path = create_box_folder(box_folder, local_parent_box_folder)
       box_folder_files = box_folder.files #keep from calling api
       sync_folder_with_box(box_folder_files, object_subfolder_path )
       update_database(box_folder_files, object_subfolder_path)
-      add_meta_to_folder(box_folder, object_subfolder_path)
+      # add_meta_to_folder(box_folder, object_subfolder_path)
     end
   end
 
@@ -256,6 +256,9 @@ class ConsolePotato
             binding.pry unless ipr.save
           end
         end
+      rescue Faraday::ConnectionFailed => e
+        puts e
+        retry
       rescue DataObjects::ConnectionError
         puts 'db error'
         sleep 0.1
