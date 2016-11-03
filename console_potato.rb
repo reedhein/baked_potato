@@ -225,18 +225,16 @@ class ConsolePotato
           @not_there ||= 0
           @not_there += 1
           puts "\n"
-          puts "Not there: #{@not_there}"
+          puts "Not there or zero: #{@not_there}"
           if @not_there % 100 == 0
             puts proposed_file
           end
           puts "\n"
           sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
           ipr = DB::ImageProgressRecord.find_from_path(relative_path)
-          ipr.file_id       = sf_attachment.id if ipr.file_id.nil?
-          if ipr.sha1.nil?
-            file_body   = sf_attachment.api_object.Body
-            ipr.sha1    = Digest::SHA1.hexdigest(file_body)
-          end
+          ipr.file_id = sf_attachment.id if ipr.file_id.nil?
+          file_body   = sf_attachment.api_object.Body
+          ipr.sha1    = Digest::SHA1.hexdigest(file_body) if ipr.sha1.nil?
           File.open(proposed_file, 'w') do |f|
             f.write(file_body)
           end
@@ -336,7 +334,7 @@ class ConsolePotato
 
   def download_from_box(file, path)
     proposed_file = Pathname.new(path) + (file.try(:name) || file.basename.to_s)
-    if !proposed_file.exist? || (proposed_file.exist? && Digest::SHA1.hexdigest(proposed_file.read) != file.sha1)
+    if !proposed_file.exist? || (proposed_file.exist? && Digest::SHA1.hexdigest(proposed_file.read) != file.sha1) || proposed_file.size == 0
       local_file = File.new(proposed_file, 'w')
       binding.pry unless file.try(:id)
       local_file.write(@box_client.download_file(file))
