@@ -48,18 +48,20 @@ class BakedPotato < Sinatra::Base
       redirect '/login'
       return
     end
-    begin
-      @image       = BPImage.random_unlocked
-    rescue DataObjects::ConnectionError
-      puts 'db error'
-      sleep 0.1
-      retry
-    end
-    @full_path   = get_full_path
-    @name        = @image.path.basename.to_s
-    @cases       = @image.cases
-    @opportunity = @image.opportunity
-    haml :index
+    # @image          = BPImage.random_unlocked
+    opp_id = CacheFolder.path.children.select{|e| e.directory?}.sample.basename.to_s
+    redirect "/salesforce/#{opp_id}"
+    # @full_path    = get_full_path
+    # @name         = @image.path.basename.to_s
+    # @cases        = @image.cases
+    # @opportunity  = @image.opportunity
+    # @s_drive_docs = find_sdrive_docs
+    # haml :index
+  end
+
+  get '/s_drive/:terms' do
+    records = search_s_drive_from_sting(params[:terms])
+    organize_records(records).to_json
   end
 
   get '/login' do
@@ -69,6 +71,26 @@ class BakedPotato < Sinatra::Base
   post '/categorize' do 
     # @image = BPImage.find(params[:full_path])
     redirect '/'
+  end
+
+  get '/salesforce/:id' do
+    begin
+      record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
+      if record.object_type == :opportunity
+        @opportunity  = CacheFolder.find_from_record(record)
+      else #recrod.object_type == :case
+        sf_case = CacheFolder.find_from_record(record)
+        @opportunity = sf_case.opportunity
+      end
+      @cases = @opportunity.cases
+      # s_drive_records =  search_s_drive_from_sting(@opportunity.name)
+      # @s_drive_docs   = organize_records(s_drive_records)
+      @s_drive_docs = []
+      haml :index
+    rescue  => e
+      ap e.backtrace
+      binding.pry
+    end
   end
 
   post '/authenticate/:provider' do
@@ -179,7 +201,7 @@ class BakedPotato < Sinatra::Base
 
   def get_full_path
     path_array = @image.path.parent.to_s.split('/')[5..-1] << @image.path.basename.to_s
-    path_array.join('/')
+    '/' + path_array.join('/')
   end
 
   helpers do
@@ -214,6 +236,36 @@ class BakedPotato < Sinatra::Base
   end
 
   private
+
+  def search_s_drive_from_sting(string)
+    search_terms = string.squish.scan(/\w+/)
+    records = []
+    search_terms.each do |term|
+      records << DB::SMBRecord.all(:path.like => "%#{term}%")
+    end
+    records.flatten.uniq
+  end
+
+  def organize_records(records)
+    result = {}
+    ['2012', '2013', '2014', '2015', '2016'].each do |date|
+      result[date] = []
+    end
+    records.each do |r|
+      next unless result[r.year]
+      result[r.year] << r
+    end
+    result
+  rescue => e
+    puts e
+    binding.pry
+  end
+
+  def find_sdrive_docs
+    name = @image.opportunity.meta.name.split(' ').first
+    search1 = DB::SMBRecord.all(:name.like => "%#{name}%")
+    search2 = DB::SMBRecord.all(:name.like => "%#{name.downcase}%")
+  end
 
   def save_salesforce_credentials(callback)
     user = DB::User.first_or_create(email: env.dig('omniauth.auth', 'extra', 'email'))
