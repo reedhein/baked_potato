@@ -14,8 +14,8 @@ module DB
 
     def self.create_from_smb_entity(smb_client, entity)
       response = smb_client.cd '.'
-      path = response.message.split('smb:').last.strip.gsub("\\", '/').gsub("\r", '').chomp('>')
-      record = first_or_create(name: entity.first, path: path + entity.first)
+      path     = response.message.split('smb:').last.strip.gsub("\\", '/').gsub("\r", '').chomp('>')
+      record   = first_or_create(name: entity.first, path: path + entity.first)
       record
     rescue => e
       ap e.backtrace
@@ -35,6 +35,15 @@ module DB
       record
     end
 
+    def year
+      return nil unless relative_path
+      _match = relative_path.split('/').first.match(/^(20\d{2})/)
+      if _match
+        _match[1]
+      else
+        binding.pry
+      end
+    end
     def self.local_path
       '/home/doug/Sandbox/s_drive'
     end
