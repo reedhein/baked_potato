@@ -13,6 +13,35 @@ class DataPotato
     DB::ImageProgressRecord.create_new_from_path(path) if path
   end
 
+  def populate_all_box_dbs
+    @box_client = Utils::Box::Client.new
+    folder  = @box_client.folder 11792669576
+    folder2 = @box_client.folder 11793962443
+    binding.pry
+    process_folder
+  end
+
+  def process_folder(folder = nil)
+    puts folder
+    folder ||= CacheFolder.path.to_s
+    cf = CacheFolder.new(folder)
+    if cf.parent_type == :box && cf.type == :directory
+      id = cf.path.basename.to_s
+      api_object = @box_client.folder(id)
+      puts api_object.storage_object if api_object
+    end
+    Pathname.new(folder).each_child do |entity|
+      process_folder(entity) if entity.directory?
+    end
+  end
+
+  def test_box_db
+    @box_client = Utils::Box::Client.new
+    case_folder = @box_client.folder("7474301905")
+    case_folder.folders.first.files
+    puts 'hello'
+  end
+
   def remove_meta_yml
     Dir.glob('/home/doug/Sandbox/dated_cache_folder/2016-10-31/**/*').each do |entity|
       path = Pathname.new(entity)
@@ -165,7 +194,7 @@ end
 
 begin
   dp =  DataPotato.new
-  dp.remove_meta_yml
+  dp.populate_all_box_dbs
   # dp.destroy_all
   # files = dp.get_files_from_cache_folder
   # records = dp.create_db_for_file_strings(files)
