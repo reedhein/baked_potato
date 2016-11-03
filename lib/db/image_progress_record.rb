@@ -2,7 +2,7 @@ module DB
   class ImageProgressRecord
     include DataMapper::Resource
     property :id,             Serial
-    property :file_id,        String, length: 255
+    property :file_id,        String, length: 255, index: true
     property :parent_id,      String, length: 255
     property :filename,       String, length: 255
     property :mac_base_path,  FilePath, default: Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder')
