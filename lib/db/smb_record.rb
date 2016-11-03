@@ -7,6 +7,7 @@ module DB
     property :name,          String, length: 255
     property :path,          String, length: 255
     property :date,          String, length: 255
+    property :sha1,          String, length: 255
     property :local_path,    String, length: 255, default: '/home/doug/Sandbox/s_drive'
     property :network_path,  String, length: 255, default: '/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits/'
     property :relative_path, String, length: 255
@@ -28,6 +29,10 @@ module DB
     def self.create_from_path(path)
       record = first_or_new(name: path.basename, relative_path: get_relative_path(path))
       record.date = Date.today.to_s
+      record.type = path.directory? ? :directory : :file
+      record.sha1 = Digest::SHA1.hexdigest(path.read)
+      record.save
+      record
     end
 
     def self.local_path
