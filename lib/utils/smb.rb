@@ -43,18 +43,22 @@ class SMB
   end
 
   def improved_sync
-    @cache_folder.each_child do |entity|
-      single_worker = Thread.new { improved_process_path_entity(entity) }
-      single_worker.priority = -1
+    @cache_folder.each_child.with_index do |entity, i|
+      self.instance_variable_set("@woker#{i}".to_sym,  Thread.new { improved_process_path_entity(entity) } )
     end
-    Thread.new do
+    Thread.new do 
+      seconds_elapsed ||= 0
       loop do
-        if single_work.status == false
+        statuses = instance_variables.select{|v| v =~ /worker\d+/}.map{|worker| worker.status}.uniq
+        puts statuses
+        if statuses.count == 1 && status.first == false
           DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
           break
-        elsif single_work.status.nil?
+        elsif statuses.count == 1 && status.first.nil?
           break
         else
+          puts "Waited #{seconds_elapsed} seconds"
+          seconds_elapsed += 3
           sleep 3
         end
       end

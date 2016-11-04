@@ -2,6 +2,7 @@ class CacheFolder
 
   attr_reader :path, :id, :file_id
   def initialize(path)
+    binding.pry if path.nil?
     @path           = Pathname.new(path)
     @cache_folder   = self.class.path
     @type           = determine_file_or_directory
@@ -27,6 +28,7 @@ class CacheFolder
       id = record.box_id
     end
     path = folder_by_id(id)
+    binding.pry unless path
     CacheFolder.new(path)
   end
 
@@ -175,7 +177,12 @@ class CacheFolder
   private 
 
   def self.folder_by_id(id)
-    dest_path = DB::ImageProgressRecord.first(parent_id: id) || Find.find(path){|path| break Pathname.new(path) if Pathname.new(path).basename.to_s == id}
+    dest_path   = DB::ImageProgressRecord.first(parent_id: id)
+    dest_path ||= Find.find(path).with_index do |path,i|
+      return Pathname.new(path) if Pathname.new(path).basename.to_s == id
+      Find.prune if id.match(/^006/) && i != 0
+    end
+    binding.pry
     dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
   end
 
