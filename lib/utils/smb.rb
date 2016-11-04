@@ -50,7 +50,7 @@ class SMB
     Thread.new do
       loop do
         if single_work.status == false
-          DB::SMBRecord.all(:date.not => Date.today_s).destroy
+          DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
           break
         elsif single_work.status.nil?
           break
@@ -66,9 +66,8 @@ class SMB
       entity.each_child do |enity|
         improved_process_path_entity(entity)
       end
-    else
-      DB::SMBRecord.create_from_path(entity)
     end
+    DB::SMBRecord.create_from_path(entity)
   end
 
   def exists?(record_path)

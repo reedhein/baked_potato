@@ -73,7 +73,7 @@ class BakedPotato < Sinatra::Base
     redirect '/'
   end
 
-  get '/salesforce/:id' do
+  get '/salesforce/:id' do 
     begin
       record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
       if record.object_type == :opportunity
