@@ -1,4 +1,7 @@
 class BoxrMash
+  require_relative './concern/db'
+  include Utils::Box::Concern::DB #feels weird that this is required
+
   def client
     @client ||= Utils::Box::Client.new
   end
@@ -8,8 +11,13 @@ class BoxrMash
   end
 
   def folders
-    client.folder_items(self).select do |entry|
+    folder_items = client.folder_items(self)
+    return [] unless folder_items
+    folders = folder_items.select do |entry|
       entry.type == 'folder'
+    end
+    folders.map do |f|
+      convert_api_object_to_local_storage(f)
     end
   end
 
@@ -18,8 +26,13 @@ class BoxrMash
   end
 
   def files
-    client.folder_items(self).select do |entry|
+    folder_items = client.folder_items(self)
+    return [] unless folder_items
+    files = folder_items.select do |entry|
       entry.type == 'file'
+    end
+    files.map do |f|
+      convert_api_object_to_local_storage(f)
     end
   end
 

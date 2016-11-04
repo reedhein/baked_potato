@@ -1,8 +1,12 @@
 module Utils
   module Box
-    class Client
+    class Client 
       include Inspector
+      require_relative './concern/db'
+      include Utils::Box::Concern::DB #feels weird that this is required
+
       attr_reader :client
+
       def initialize(user = DB::User.Doug)
         @client = self.class.client(user)
         dynanmic_methods_for_client #dynamic methods that passes methods to @client
@@ -45,10 +49,27 @@ module Utils
         methods.each do |meth|
           define_singleton_method meth do |*args|
             begin
-              @client.send(meth, *args)
-            rescue
-              @client = self.class.client(DB::User.Doug)
-              @client.send(meth, *args)
+              return_value = @client.send(meth, *args)
+              if return_value.is_a? BoxrMash
+                convert_api_object_to_local_storage(return_value)
+              else
+                return_value
+              end
+            rescue Boxr::BoxrError => e
+              if e.to_s.match(/(Item is trashed|Not Found)/)
+                return nil
+              else
+                retry_count ||= 0
+                @client = self.class.client(DB::User.Doug)
+                if retry_count <= 3
+                  retry_count += 1
+                  retry
+                else
+                  ap e.backtrace
+                  puts e
+                  binding.pry
+                end
+              end
             end
           end
         end
