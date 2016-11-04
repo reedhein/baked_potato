@@ -3,7 +3,7 @@
   %p{style: 'float:right'}
     = sf_case.meta[:case_number]
   %hr
-%ul.nav.nav-tabs#mainTabs{role: 'tablist'}
+%ul.nav.nav-tabs.mainTabs{role: 'tablist'}
   %li.nav-item.case
     %a.nav-link.active{href: "#case#{sf_case.meta[:case_number]}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:case_number]}Action"}
       Actions
@@ -18,8 +18,8 @@
     .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action", class: "case#{sf_case.meta[:case_number]}"}
       - sf_case.box_folders.each do |box_folder|
         .clearfix
-        %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
-          move to: #{box_folder.meta[:name]}
+          %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
+            move to: #{box_folder.meta[:name]}
       .clearfix
       %button.btn.action{style: 'margin-top: 1em'}
         Add scrubbed chatter message
@@ -34,7 +34,7 @@
               %fieldset
                 %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
                   - folder.files.each do |file|
-                    %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+                    %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: sf_case.cloud_path , sha1: file.sha1 }}
                       .text-xs-left
                         %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
                       .clearfix
@@ -43,7 +43,7 @@
     .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Salesforce", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
       %ul
         - sf_case.files.each do |file|
-          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: sf_case.cloud_path }}
             .text-xs-left
               %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
             .clearfix

@@ -1,0 +1,14 @@
+%h5
+  %input#s_drive_search{ name: 'derp', value: 'derp'}
+%hr
+%ul.nav.nav-tabs.mainTabs{role: 'tablist'}
+  - ['2013', '2014', '2015','2016'].each_with_index do |date, i|
+    -if i == 0
+      %li.nav-item.case
+        %a.nav-link.active{href: "#s_drive#{date}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#s_drive#{date}Action"}
+          = date
+    -else
+      %li.nav-item.case
+        %a.nav-link{href: "#s_drive#{date}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#s_drive#{date}Action"}
+          = date
+.test-pane{role: 'tabpanel', style: 'max-height: 15em; overflow-y: scroll'}

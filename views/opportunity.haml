@@ -11,8 +11,8 @@
         Salesforce Native
   .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em; min-height: 10em'}
     .nav-pane.opportunity.fade.in.active#fileDetails{role: 'tabpanel'}
-      - @image.opportunity.box_folders.each do |box_folder|
-        %button.btn.action{data: {id: box_folder.id}, style: 'margin-bottom: 1em'}
+      - @opportunity.box_folders.each do |box_folder|
+        %button.btn.action{data: {id: box_folder.id}, style: 'margin-bottom: 1em', sha1: box_folder.sha1}
           move to: #{box_folder.meta[:name]}
         .clearfix
       %button.btn.action
@@ -22,12 +22,13 @@
         %ul{style: 'padding-left: 0px;list-style-type: none', class: 'droppable'}
           - opportunity.box_folders.each do |folder|
             %h3
+              - binding.pry if folder.meta.nil?
               = folder.meta[:name]
             %li.list-group-item{id: folder.id}
               %fieldset
                 %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
                   - folder.files.each do |file|
-                    %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+                    %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: opportunity.cloud_path , sha1: file.sha1 }}
                       .text-xs-left
                         %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
                       .clearfix
@@ -35,7 +36,7 @@
     .nav-pane.opportunity.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
       %ul
         - opportunity.files.each do |file|
-          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: @image.cloud_path }}
+          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: opportunity.cloud_path, sha1: file.sha1 }}
             .text-xs-left
               %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
             .clearfix
