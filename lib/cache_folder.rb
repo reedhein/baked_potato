@@ -20,6 +20,16 @@ class CacheFolder
     new(record.full_path.parent)
   end
 
+  def self.find_from_record(record, type = :salesforce)
+    if type == :salesforce
+      id = record.sales_force_id
+    else
+      id = record.box_id
+    end
+    path = folder_by_id(id)
+    CacheFolder.new(path)
+  end
+
   def file_id
     id
   end
@@ -29,8 +39,7 @@ class CacheFolder
   end
 
   def move_to_folder_id(id)
-    dest_path = DB::ImageProgressRecord.first(parent_id: id) || Find.find(@cache_folder){|path| break Pathname.new(path) if Pathname.new(path).basename.to_s == id}
-    dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
+    dest_path = self.class.folder_by_id(id)
     FileUtils.mv(@path, dest_path)
   rescue => e
     ap e.backtrace
@@ -42,10 +51,30 @@ class CacheFolder
   end
 
   def meta
-    @meta ||= salesforce_parent
+    @meta ||= determin_meta
   end
 
-  def salesforce_parent(_path = nil)
+  def name
+    meta[:name]
+  end
+
+  def cloud_path
+    parent_type.to_s + '/' + @path.parent.basename.to_s
+  end
+
+  def sha1
+    BPImage.new(self).db.sha1 if type == :file
+  end
+
+  def determin_meta
+    if parent_type == :box
+      box_parent_db
+    else
+      salesforce_parent_db
+    end
+  end
+
+  def salesforce_parent_db(_path = nil)
     path = _path || @path
     parent = path.ascend.detect do |entity|
       entity.directory? && entity.basename.to_s =~ /^(500|006)/
@@ -53,20 +82,48 @@ class CacheFolder
     DB::SalesForceProgressRecord.first(sales_force_id: parent.basename)
   end
 
+  def box_parent_db(_path = nil)
+    path = _path || @path
+    parent = path.ascend.detect do |entity|
+      entity.directory? && entity.basename.to_s =~ /\d{10,}/
+    end
+    DB::BoxFolder.first(box_id: parent.basename.to_s)
+  end
+
   def opportunity
     opp_path = @path.ascend.detect do |entity|
+      binding.pry unless entity.exist?
       entity.directory? && entity.basename.to_s =~ /^006/
     end
+    binding.pry unless opp_path
     CacheFolder.new(opp_path)
+  end
+
+  def cases
+    cases_folder = @path + 'cases'
+    return [] unless cases_folder.exist?
+    _cases = cases_folder.children.select do |entity|
+      entity.directory? && entity.basename.to_s =~ /^500/
+    end
+    _cases.map do |case_folder|
+      CacheFolder.new(case_folder)
+    end
   end
 
   def box_folders
     #find box folders underneath parent folder
     if @type == :directory
-      CacheFolder.new(@path.children.detect{|c| c.directory? && c.basename.to_s =~ /\d{10,}/}).folders
+      box_folder = @path.children.detect{|c| c.directory? && c.basename.to_s =~ /\d{10,}/}
     else
-      CacheFolder.new(@path.parent.children.detect{|c| c.directory? && c.basename.to_s =~ /\d{10,}/}).folders
+      box_folder = @path.parent.children.detect{|c| c.directory? && c.basename.to_s =~ /\d{10,}/}
     end
+    if box_folder
+      CacheFolder.new(box_folder).folders
+    else
+      []
+    end
+  rescue => e
+    binding.pry
   end
 
   def self.parent_type(path)
@@ -116,6 +173,11 @@ class CacheFolder
   end
 
   private 
+
+  def self.folder_by_id(id)
+    dest_path = DB::ImageProgressRecord.first(parent_id: id) || Find.find(path){|path| break Pathname.new(path) if Pathname.new(path).basename.to_s == id}
+    dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
+  end
 
   def relevant_children(path)
     path.each_child.select do |entity|
