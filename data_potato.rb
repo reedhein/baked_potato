@@ -6,6 +6,8 @@ require 'watir'
 require 'watir-scroll'
 require_relative './lib/cache_folder'
 require_relative './lib/utils'
+# require_relative 'console_potato'
+# require_relative 'cron_job'
 ActiveSupport::TimeZone[-8]
 
 class DataPotato
@@ -192,22 +194,23 @@ class DataPotato
   end
 end
 
-begin
-  dp =  DataPotato.new
-  dp.populate_all_box_dbs
-  # dp.destroy_all
-  # files = dp.get_files_from_cache_folder
-  # records = dp.create_db_for_file_strings(files)
-  # binding.pry
-  # dp.add_meta_to_db_records(records)
-  puts 'awesome'
-rescue DataObjects::ConnectionError
-  puts 'db error'
-  sleep 0.1
-  retry
-rescue =>e
-  puts e
-  ap e.backtrace
-  binding
-  puts 'awesome'
+w = WorkerPool.instance
+count = w.tasks.size
+dp =  DataPotato.new
+binding.pry
+SMB.new.improved_sync
+while w.tasks.size > 1 do
+  sleep 1
+  new_count = w.tasks.size
+  if new_count == count
+    kill_switch += 1
+    puts 'kill switch at ' + kill_switch.to_s if kill_switch > 10
+  else
+    count = new_count
+    kill_switch = 0
+  end
+  binding.pry if kill_switch > 60*5
+  puts '\''*88
+  puts "task size: #{w.tasks.size}"
+  puts '\''*88
 end

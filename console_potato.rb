@@ -31,7 +31,6 @@ class ConsolePotato
   end
 
   def produce_snapshot_from_scratch
-    # finance_folders.each_slice(10) do |finance_folders|
     finance_folders.shuffle.each_slice(15).each do |finance_folders|
       cases = cases_from_finance_folders(finance_folders)
       opportunities = opps_from_finance_folder(finance_folders)

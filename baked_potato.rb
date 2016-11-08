@@ -83,9 +83,6 @@ class BakedPotato < Sinatra::Base
         @opportunity = sf_case.opportunity
       end
       @cases = @opportunity.cases
-      # s_drive_records =  search_s_drive_from_sting(@opportunity.name)
-      # @s_drive_docs   = organize_records(s_drive_records)
-      @s_drive_docs = []
       haml :index
     rescue  => e
       ap e.backtrace

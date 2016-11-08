@@ -7,6 +7,7 @@ class SMB
     password = CredService.creds.smb.password
     @worker_pool = WorkerPool.instance
     @cache_folder = Pathname.new('/home/doug/Sandbox/s_drive/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits')
+    @copied_cache_folder = Pathname.new('/home/doug/Sandbox/s_drive_exits_backup/')
     @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA', columns: 500)
     dynanmic_methods_for_client
     @count  ||= 0
@@ -21,57 +22,37 @@ class SMB
     smb.process_directory( smb.documents_path )
   end
 
-  def sync
-    cd(documents_path)
-    DB::SMBRecord.all.batch(1000).each_with_index do |record, i|
-      puts "#{i} testing #{record.path}"
-      if Date.parse(record.date) && Date.parse(record.date) > Date.today
-        puts "skipping #{Pathname.new(record.path).basename}"
-        next
-      end
-      if !self.exists? record.path
-        puts "deleting #{Pathname.new(record.path).basename}"
-        record.destroy
-      else
-        record.date = Date.today.to_s
-      end
-      sleep 0
-    end
-  rescue =>  e
-    ap e
-    retry
-  end
-
   def improved_sync
-    @cache_folder.each_child.with_index do |entity, i|
-      self.instance_variable_set("@woker#{i}".to_sym,  Thread.new { improved_process_path_entity(entity) } )
+    @copied_cache_folder.each_child.with_index do |entity, i|
+      improved_process_path_entity(entity)
     end
-    Thread.new do 
-      seconds_elapsed ||= 0
-      loop do
-        statuses = instance_variables.select{|v| v =~ /worker\d+/}.map{|worker| worker.status}.uniq
-        puts statuses
-        if statuses.count == 1 && status.first == false
-          DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
-          break
-        elsif statuses.count == 1 && status.first.nil?
-          break
-        else
-          puts "Waited #{seconds_elapsed} seconds"
-          seconds_elapsed += 3
-          sleep 3
-        end
-      end
-    end
+    # Thread.new do 
+    #   seconds_elapsed ||= 0
+    #   loop do
+    #     statuses = instance_variables.select{|v| v =~ /worker\d+/}.map{|worker| worker.status}.uniq
+    #     puts statuses
+    #     if statuses.count == 1 && status.include?(false)
+    #       DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
+    #       break
+    #     elsif statuses.count == 1 && status.first.nil?
+    #       break
+    #     else
+    #       puts "Waited #{seconds_elapsed} seconds"
+    #       seconds_elapsed += 3
+    #       sleep 3
+    #     end
+    #   end
+    # end
   end
 
   def improved_process_path_entity(entity)
     if entity.directory?
-      entity.each_child do |enity|
-        improved_process_path_entity(entity)
+      entity.each_child.with_index do |child, i|
+        puts "#{i} #{child}" if i % 10000 == 0 && i != 0
+        improved_process_path_entity(child)
       end
     end
-    DB::SMBRecord.create_from_path(entity)
+    @worker_pool.tasks.push( Proc.new { DB::SMBRecord.create_from_path(entity) } )
   end
 
   def exists?(record_path)
@@ -95,7 +76,6 @@ class SMB
       entity_name = entity.first.dup
       process_directory(entity_name) if entity.last[:type] == :directory
       path = derive_path(entity)
-      puts path
       if DB::SMBRecord.first(path: path)
         puts 'skipping'
       else
@@ -121,6 +101,27 @@ class SMB
     @smb_client.ls.select do |key, value|
       value[:type] == :directory
     end
+  end
+
+  def sync
+    cd(documents_path)
+    DB::SMBRecord.all.batch(1000).each_with_index do |record, i|
+      puts "#{i} testing #{record.path}"
+      if Date.parse(record.date) && Date.parse(record.date) > Date.today
+        puts "skipping #{Pathname.new(record.path).basename}"
+        next
+      end
+      if !self.exists? record.path
+        puts "deleting #{Pathname.new(record.path).basename}"
+        record.destroy
+      else
+        record.date = Date.today.to_s
+      end
+      sleep 0
+    end
+  rescue =>  e
+    ap e
+    retry
   end
 
   def documents

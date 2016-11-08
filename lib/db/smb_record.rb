@@ -28,11 +28,18 @@ module DB
 
     def self.create_from_path(path)
       record = first_or_new(name: path.basename, relative_path: get_relative_path(path))
-      record.date = Date.today.to_s
-      record.type = path.directory? ? :directory : :file
-      record.sha1 = Digest::SHA1.hexdigest(path.read)
+      return if !record.new? && (record.date == Date.today.to_s || record.date == Date.yesterday)
+      if path.directory?
+        record.type = :directory
+      else
+        record.type = :file
+        record.sha1 = Digest::SHA1.hexdigest(path.read)
+      end
       record.save
       record
+    rescue => e
+      puts e
+      binding.pry
     end
 
     def year
