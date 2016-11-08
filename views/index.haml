@@ -107,20 +107,6 @@
     $.fn.editable.defaults.mode = 'inline';
     $(document).ready(function() {
       $('#kittyButton').raptorize();
-      $('.nav-item.opp a').click(function(e) {
-        e.preventDefault()
-        $('.nav-pane.opportunity').hide()
-        $('.nav-pane'+ $(this).attr('href')).show()
-      })
-      $('.nav-item.case a').click(function(e) {
-        e.preventDefault()
-        var id = $(this).attr('href')
-        console.log('id: ', id)
-        $('.nav-pane.' + id.substring(1,15) ).hide()
-        console.log('substring: ', '.nav-pane.' + id.substring(1,15))
-        $('.nav-pane' + id).show()
-      })
-
       $('.btn.action').hover(
         function(){ $('.source-file').addClass('glow') },
         function(){ $('.source-file').removeClass('glow') }
@@ -193,8 +179,10 @@
       })
       $('#s_drive_search').attr('value',$.trim( $('#oppName').text()))
       $.getJSON('/s_drive/' + encodeURI($('#oppName').text()), function(data){
-        _.each(['2013','2014','2015','2016'],  function(year) { 
+        _.each(['2012', '2013','2014','2015','2016'],  function(year) { 
           html_search_results =   _.map(data[year], function(x) { return "<a href='" + x.relative_path + "'>" + x.relative_path + "</a><br/>" });
+        })
+        _.each(['2012', '2013','2014','2015','2016'],  function(year) {
           $('#s_drive .card-block .test-pane').append(html_search_results)
         })
       })

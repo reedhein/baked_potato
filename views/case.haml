@@ -1,21 +1,21 @@
 %h5
   = sf_case.meta[:subject]
   %p{style: 'float:right'}
-    = sf_case.meta[:case_number]
+    = sf_case.meta[:casenumber]
   %hr
 %ul.nav.nav-tabs.mainTabs{role: 'tablist'}
   %li.nav-item.case
-    %a.nav-link.active{href: "#case#{sf_case.meta[:case_number]}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:case_number]}Action"}
+    %a.nav-link.active{href: "#case#{sf_case.meta[:casenumber]}Action", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:casenumber]}Action"}
       Actions
   %li.nav-item.case
-    %a.nav-link{href: "#case#{sf_case.meta[:case_number]}Box", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:case_number]}Box"}
+    %a.nav-link{href: "#case#{sf_case.meta[:casenumber]}Box", role:'tab', 'data-toggle': 'tab', 'data-target':  "#case#{sf_case.meta[:casenumber]}Box"}
       Box
   %li.nav-item.case
-    %a.nav-link{href: "#case#{sf_case.meta[:case_number]}Salesforce", role:'tab', 'data-toggle': 'tab', 'data-target':   "#case#{sf_case.meta[:case_number]}Salesforce"}
+    %a.nav-link{href: "#case#{sf_case.meta[:casenumber]}Salesforce", role:'tab', 'data-toggle': 'tab', 'data-target':   "#case#{sf_case.meta[:casenumber]}Salesforce"}
       Salesforce Native
 
   .tab-content.col-sm-12.col-md-12.col-xlg-12.offset-md-12.offset-lg-12.offset-xl-12{style: 'background: white; padding-bottom: 1em;'}
-    .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Action", class: "case#{sf_case.meta[:case_number]}"}
+    .nav-pane.case.fade.in.active{role: 'tabpanel', id: "case#{sf_case.meta[:casenumber]}Action", class: "case#{sf_case.meta[:casenumber]}"}
       - sf_case.box_folders.each do |box_folder|
         .clearfix
           %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
@@ -24,7 +24,7 @@
       %button.btn.action{style: 'margin-top: 1em'}
         Add scrubbed chatter message
 
-    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Box", class: "case#{sf_case.meta[:case_number]}", style: 'display:none; max-height: 15em; overflow-y: scroll'}
+    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:casenumber]}Box", class: "case#{sf_case.meta[:casenumber]}", style: 'display:none; max-height: 15em; overflow-y: scroll'}
       %form
         %ul.list-group{style: 'padding-left: 0px; list-style-type: none', class: 'droppable'}
           - sf_case.box_folders.each do |folder|
@@ -40,7 +40,7 @@
                       .clearfix
                       = file.path.basename.to_s
 
-    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:case_number]}Salesforce", class: "case#{sf_case.meta[:case_number]}", style: 'display:none'}
+    .nav-pane.case.fade{role: 'tabpanel', id: "case#{sf_case.meta[:casenumber]}Salesforce", class: "case#{sf_case.meta[:casenumber]}", style: 'display:none'}
       %ul
         - sf_case.files.each do |file|
           %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: sf_case.cloud_path }}
@@ -56,6 +56,18 @@
     %a{href: "localhost:4545/#{sf_case.id}"}
       %button.btn-success
         Go to kitty
+
+    :javascript
+      $(document).ready(function() {
+        $('.nav-item.case a').click(function(e) {
+          e.preventDefault()
+          var id = $(this).attr('href')
+          console.log('id: ', id)
+          $('.nav-pane.' + id.substring(1,13) ).hide()
+          console.log('substring: ', '.nav-pane.' + id.substring(1,13))
+          $('.nav-pane' + id).show()
+        })
+      })
 
 :css
   .btn.action:hover {
