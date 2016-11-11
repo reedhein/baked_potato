@@ -8,14 +8,14 @@ class CronJob
 
   def remove_old_cache_folder
     cache_folder = cp.dated_cache_folder
-    if cache_folder.parent.each_child.count > 3
+    if cache_folder.parent.each_child.count > 7
       cache_folder.parent.each_child do |entity|
         @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) } if !entity.file? && Date.parse(entity.basename) < (Date.today - 3.days)
       end
     end
     remove_date = (Date.today - 3.days).to_s
     folder_path_to_remove  = cache_folder.parent + remove_date
-    @worker_pool.tasks.push Proc.new{ FileUtils.rm_r(folder_path_to_remove) } if folder_path_to_remove.exist?
+    @worker_pool.tasks.push Proc.new{ FileUtils.rm_rf(folder_path_to_remove) } if folder_path_to_remove.exist?
   end
 
   def copy_todays_folder_to_tomorrow
@@ -42,14 +42,11 @@ class CronJob
 
 end
 
-binding.pry
 w = WorkerPool.instance
 cj = CronJob.new
-cj.reconcile_s_drive
-binding.pry
-copy_thread = Thread.new { cj.copy_todays_folder_to_tomorrow }
+# copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
-copy_thread = Thread.new { sleep 1 }
+copy_thread   = Thread.new { sleep 1 }
 (60 * 60).downto(1) do |i|
   puts "allowing copy to get head start"
   sleep 1

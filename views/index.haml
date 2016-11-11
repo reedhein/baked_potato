@@ -5,30 +5,31 @@
   %link{ rel: 'stylesheet', href: '/stylesheets/font-awesome.min.css' }
   %link{ rel: 'stylesheet', href: '/stylesheets/bootstrap-editable.css' }
   %script{src: "/js/jquery-3.1.1.min.js"}
-  %script{src: "/js/bootstrap.min.js"}
   %script{src: "/js/jquery.raptorize.1.0.js"}
   %script{src: "/js/bootstrap-editable.js"}
   %script{src: "/js/jquery.session.js"}
   %script{src: "/js/underscore.js"}
+  %script{src: "/js/bootstrap.min.js"}
+  %script{src: "/js/list.min.js"}
+  %script{src: "/js/list.fuzzysearch.min.js"}
 %body{style: "background-color: #0C1017; background-image: url('/domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
   %nav.navbar.navbar-dark
     %a.navbar-brand{href: '/'}
       Kitten Clicker
     %ul.nav.navbar-nav
-      %li.nav-item.active
+      %li.nav-item
+        %a{href: '#'}
+          😺
+      %li.nav-item
         %a.nav-link{href: '#'}
           Home
-      %li.nav-item.active
+      %li.nav-item
         %a.nav-link{href: '#'}
           Login
-
-  -# .alert.alert-warning.alert-dismissible.fade.in{role: 'alert'}
-  -#   %h4
-  -#     test
-  -#   %p
-  -#     Hello test
-  -#   %button.fa.fa-close.fa-lg.close{type: 'button', data: {dismiss: 'alert', 'aria-label': 'close'}}
-  -#     -# %i.fa.fa-close.fa-lg
+      %li.nav-item
+        %button.btn.btn-primary.btn-lg.refresh_page_data{"data-target" => "#myModal", "data-toggle" => "modal", :type => "button"}
+          Refresh
+  = partial(:_refresh_modal)
   .container-fluid
     .row
       - if @image
@@ -88,7 +89,6 @@
 
         = partial(:opportunity, locals: {opportunity: @opportunity})
 
-
     %br
     %h4.col-lg-6{style: 'color: white'} Cases
     %br
@@ -107,19 +107,29 @@
     $.fn.editable.defaults.mode = 'inline';
     $(document).ready(function() {
       $('#kittyButton').raptorize();
+
       $('.btn.action').hover(
         function(){ $('.source-file').addClass('glow') },
         function(){ $('.source-file').removeClass('glow') }
       );
+
+      $('.refresh_page_data').on('click', function(e){
+         e.preventDefault();
+         id = document.location.pathname.split('/').slice(-1)[0]
+         $.ajax({
+            url: '/refresh/' + id,
+            timeout: 1000*60*3,
+            success: function(){ window.location.reload()}
+         })
+      })
+
       $('.screenable').click(function(e){
         id = $(this).data('id')
         $.getJSON('/file/' + id, function( data ) {
-          d = new Date();
           woot = $('.preview-window').attr('src', data.image_path ).hide()
           $('.preview-window').remove()
           $('.container-fluid .row:first').prepend(woot)
           $('.preview-window').fadeIn();
-
           whoot = $('.file-data .image-name a').attr('href', data.id).text(data.name)
           danger = $('.file-data .btn-danger').attr('id', data.id)
           $('.file-data .btn-danger').remove()
@@ -145,7 +155,6 @@
             }
           )
         }
-
       })
 
       $('.file-data a').editable(
@@ -176,15 +185,6 @@
             'json'
           );
         }
-      })
-      $('#s_drive_search').attr('value',$.trim( $('#oppName').text()))
-      $.getJSON('/s_drive/' + encodeURI($('#oppName').text()), function(data){
-        _.each(['2012', '2013','2014','2015','2016'],  function(year) { 
-          html_search_results =   _.map(data[year], function(x) { return "<a href='" + x.relative_path + "'>" + x.relative_path + "</a><br/>" });
-        })
-        _.each(['2012', '2013','2014','2015','2016'],  function(year) {
-          $('#s_drive .card-block .test-pane').append(html_search_results)
-        })
       })
     });
 

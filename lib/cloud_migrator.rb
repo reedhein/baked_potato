@@ -4,12 +4,10 @@ require 'awesome_print'
 require 'yaml'
 require 'watir'
 require 'watir-scroll'
-require_relative './lib/cache_folder'
-require_relative './lib/utils'
 # require_relative 'data_potato'
 ActiveSupport::TimeZone[-8]
 
-class ConsolePotato
+class CloudMigrator
   attr_reader :browser_tool, :dated_cache_folder
   def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil)
     Utils.environment     = @environment = environment
@@ -31,11 +29,19 @@ class ConsolePotato
   end
 
   def produce_single_snapshot_from_scratch(id)
-    opportunity = @sf_client.query(query: construct_opps_query(id: id))
+    opportunity = @sf_client.custom_query(query: construct_opp_query(id: id)).first
+    folder = create_folder(opportunity)
+    populate_local_box_attachments_for_sobject_and_path(opportunity, folder)
     migrated_cloud_to_local_machine(opportunity)
     opportunity.cases.each do |sf_case|
       migrated_cloud_to_local_machine(sf_case)
+      folder = create_folder(sf_case)
+      populate_local_box_attachments_for_sobject_and_path(sf_case, folder)
     end
+  rescue =>e
+    ap e.backtrace
+    binding.pry
+    puts 'derp'
   end
 
   def produce_snapshot_from_scratch
@@ -67,7 +73,6 @@ class ConsolePotato
     folder = create_folder(sobject)
     sync_sobject_attachments_to_folder(sobject, folder)
     populate_local_box_attachments_for_sobject_and_path(sobject, folder)
-    # add_meta_to_folder(sobject, folder)
   end
 
   def sync_sobject_attachments_to_folder(sobject, folder)
@@ -113,23 +118,6 @@ class ConsolePotato
     end
   end
 
-  def add_meta_to_folder(object, folder)
-    file = File.open(folder + 'meta.yml', 'w+')
-    meta = {}
-    if object.type == 'Case'
-      meta[:subject]      = object.subject
-      meta[:id]           = object.id
-      meta[:case_number]  = object.case_number
-    elsif object.type == 'Opportunity'
-      meta[:name]         = object.name
-      meta[:id]           = object.id
-    else #box
-      meta[:name]         = object.name
-      meta[:id]           = object.id
-    end
-    file.write(meta.to_yaml)
-  end
-
   def create_folder(sobject)
     todays_backup      = @dated_cache_folder
     if sobject.type    == 'Case'
@@ -145,10 +133,6 @@ class ConsolePotato
     else
       binding.pry
     end
-  end
-
-  def bc
-    # @browser_tool.close
   end
 
   private
@@ -182,13 +166,11 @@ class ConsolePotato
     parent_box_folder_files = parent_box_folder.files #keep from calling api
     sync_folder_with_box(parent_box_folder_files , local_parent_box_folder)
     update_database(parent_box_folder_files, local_parent_box_folder)
-    # add_meta_to_folder(parent_box_folder, local_parent_box_folder)
     parent_box_folder.folders.each do |box_folder|
       object_subfolder_path = create_box_folder(box_folder, local_parent_box_folder)
       box_folder_files = box_folder.files #keep from calling api
       sync_folder_with_box(box_folder_files, object_subfolder_path )
       update_database(box_folder_files, object_subfolder_path)
-      # add_meta_to_folder(box_folder, object_subfolder_path)
     end
   end
 

@@ -9,6 +9,7 @@ module DB
     property :date,          String, length: 255
     property :sha1,          String, length: 255
     property :local_path,    String, length: 255, default: '/home/doug/Sandbox/s_drive'
+    property :cache_path,    String, length: 255, default: '/home/doug/Sandbox/s_drive_exits_backup'
     property :network_path,  String, length: 255, default: '/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits/'
     property :relative_path, String, length: 255
 
@@ -48,7 +49,7 @@ module DB
       if _match
         _match[1]
       else
-        binding.pry
+        relative_path.match(/^(20\d{2})/)
       end
     end
     def self.local_path
@@ -59,10 +60,13 @@ module DB
       '/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits/'
     end
 
+    def self.cache_path
+      '/home/doug/Sandbox/s_drive_exists_backup'
+    end
     private
 
     def self.get_relative_path(path)
-      path.to_s.gsub(local_path, '').gsub(network_path, '')
+      path.to_s.gsub(local_path, '').gsub(network_path, '').gsub(cache_path, '')
     end
   end
 

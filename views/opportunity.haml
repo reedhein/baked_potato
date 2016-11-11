@@ -35,12 +35,15 @@
                       = file.path.basename.to_s
     .nav-pane.opportunity.fade#salesforceAttachments{role: 'tabpanel', style: 'display: none'}
       %ul
-        - opportunity.files.each do |file|
-          %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: opportunity.cloud_path, sha1: file.sha1 }}
-            .text-xs-left
-              %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
-            .clearfix
-            = file.path.basename.to_s
+        - if opportunity.files.empty?
+          No files
+        - else
+          - opportunity.files.each do |file|
+            %li.list-group-item.screenable{data: {id: BPImage.new(file).id, location: opportunity.cloud_path, sha1: file.sha1 }}
+              .text-xs-left
+                %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+              .clearfix
+              = file.path.basename.to_s
     :javascript
       $(document).ready(function(){
         $('.nav-item.opp a').click(function(e) {
