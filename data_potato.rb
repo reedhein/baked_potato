@@ -28,6 +28,16 @@ class DataPotato
     binding.pry
   end
 
+
+  def herp_derp
+    DB::SMBRecord.all.each_with_index do |x,i| 
+      next unless x.relative_path.match(/^_exits_backup/) || x.relative_path.match(/^\//)
+      x.update(relative_path: x.relative_path.gsub('_exits_backup/', ''))
+      x.update(relative_path: x.relative_path[1..-1]) if x.relative_path[0] == '/'
+      puts " #{i} #{x.relative_path}" if i % 1000 == 0
+    end
+  end
+
   def populate_all_box_dbs
     @box_client = Utils::Box::Client.new
     folder  = @box_client.folder 11792669576
@@ -41,7 +51,7 @@ class DataPotato
     folder ||= CacheFolder.path.to_s
     cf = CacheFolder.new(folder)
     if cf.parent_type == :box && cf.type == :directory
-      id = cf.path.basename.to_s
+      id         = cf.path.basename.to_s
       api_object = @box_client.folder(id)
       puts api_object.storage_object if api_object
     end
@@ -210,9 +220,7 @@ end
 w = WorkerPool.instance
 count = w.tasks.size
 dp =  DataPotato.new
-dp.format_csv_date_column
-binding.pry
-# SMB.new.improved_sync
+SMB.new.improved_sync
 while w.tasks.size > 1 do
   sleep 1
   new_count = w.tasks.size

@@ -53,21 +53,18 @@
     %a{href: "http://na34.salesforce.com/#{sf_case.id}", target: '_blank'}
       %button.btn-warning
         Go to original
-    %a{href: "localhost:4545/#{sf_case.id}"}
-      %button.btn-success
-        Go to kitty
 
-    :javascript
-      $(document).ready(function() {
-        $('.nav-item.case a').click(function(e) {
-          e.preventDefault()
-          var id = $(this).attr('href')
-          console.log('id: ', id)
-          $('.nav-pane.' + id.substring(1,13) ).hide()
-          console.log('substring: ', '.nav-pane.' + id.substring(1,13))
-          $('.nav-pane' + id).show()
-        })
-      })
+:javascript
+  $(document).ready(function() {
+    $('.nav-item.case a').click(function(e) {
+      e.preventDefault()
+      var id = $(this).attr('href')
+      console.log('id: ', id)
+      $('.nav-pane.' + id.substring(1,13) ).hide()
+      console.log('substring: ', '.nav-pane.' + id.substring(1,13))
+      $('.nav-pane' + id).show()
+    })
+  })
 
 :css
   .btn.action:hover {

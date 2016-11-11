@@ -35,7 +35,9 @@ class BakedPotato < Sinatra::Base
   @sf_client  = Utils::SalesForce::Client.new
 
   image_path = Pathname.new(Dir.pwd + '/public') + Date.today.to_s
+  smb_path = Pathname.new(Dir.pwd + '/public/smb_cache')
   FileUtils.ln_s( CacheFolder.path, image_path ) unless image_path.exist? || image_path.symlink?
+  FileUtils.ln_s( CacheFolder.smb_path, smb_path ) unless smb_path.exist? || smb_path.symlink?
 
   get '/' do
     authenticate_me(DB::User.Doug)
@@ -51,12 +53,17 @@ class BakedPotato < Sinatra::Base
     # @image          = BPImage.random_unlocked
     opp_id = CacheFolder.path.children.select{|e| e.directory?}.sample.basename.to_s
     redirect "/salesforce/#{opp_id}"
-    # @full_path    = get_full_path
-    # @name         = @image.path.basename.to_s
-    # @cases        = @image.cases
-    # @opportunity  = @image.opportunity
-    # @s_drive_docs = find_sdrive_docs
-    # haml :index
+  end
+
+  get '/refresh/:id' do
+    cm = CloudMigrator.new
+    cm.produce_single_snapshot_from_scratch(params[:id])
+    return {finished: true}.to_json
+  end
+
+  get '/s_drive/file/:sha1' do
+    record = DB::SMBRecord.first(sha1: params['sha1'])
+    return record.to_json
   end
 
   get '/s_drive/:terms' do
@@ -149,13 +156,19 @@ class BakedPotato < Sinatra::Base
   end
 
   post '/move_file' do
-    email = session[:box][:email]
-    updated_record = Action::FileMove.new(email: email,
-                        file_id: params[:file_id],
-                        source_id: params[:source_id],
-                        destination_id: params[:destination_id]
-                      ).perform
-    {status: 'success', destination_id: params[:destination_id], file_id: updated_record.file_id, original_id: params[:file_id]}.to_json
+    begin
+      email = session[:box][:email]
+      updated_record = Action::FileMove.new(email: email,
+                          file_id: params[:file_id],
+                          source_id: params[:source_id],
+                          destination_id: params[:destination_id]
+                        ).perform
+      {status: 'success', destination_id: params[:destination_id], file_id: updated_record.file_id, original_id: params[:file_id]}.to_json
+    rescue => e
+      ap e.backtrace
+      binding.pry
+      puts 'lol'
+    end
   end
 
   post '/delete_file' do 
@@ -194,6 +207,10 @@ class BakedPotato < Sinatra::Base
       sleep 0.05
       retry
     end
+  end
+
+  get '/s_drive/screenable/:path' do
+    binding.pry
   end
 
   def get_full_path
@@ -238,7 +255,9 @@ class BakedPotato < Sinatra::Base
     search_terms = string.squish.scan(/\w+/)
     records = []
     search_terms.each do |term|
-      records << DB::SMBRecord.all(:path.like => "%#{term}%")
+      next if term.downcase == 'household' || term.downcase == 'and'
+      results = DB::SMBRecord.all(:relative_path.like => "%#{term}%")
+      records << results unless results.empty?
     end
     records.flatten.uniq
   end

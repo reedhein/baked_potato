@@ -7,8 +7,8 @@
 /*! normalize.css v4.0.0 | MIT License | github.com/necolas/normalize.css */
 html {
   font-family: sans-serif;
-  -ms-text-size-adjust: 100%;
-  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 66%;
+  -webkit-text-size-adjust: 66%;
 }
 
 body {
@@ -315,7 +315,7 @@ html {
 }
 
 html {
-  font-size: 16px;
+  font-size: 12px;
   -ms-overflow-style: scrollbar;
   -webkit-tap-highlight-color: transparent;
 }

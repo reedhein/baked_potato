@@ -16,6 +16,10 @@ class CacheFolder
     RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s : Pathname.new('/home/doug/Sandbox/dated_cache_folder' ) + Date.today.to_s
   end
 
+  def self.smb_path
+    RbConfig::CONFIG['host_os'] =~ /darwin/ ? Pathname.new('/Users/voodoologic/Sandbox/s_drive_exits_backup')  : Pathname.new('/home/doug/Sandbox/s_drive_exits_backup' )
+  end
+
   def self.find_by_id(id)
     record = DB::ImageProgressRecord.first(parent_id: id)
     new(record.full_path.parent)
@@ -182,7 +186,6 @@ class CacheFolder
       return Pathname.new(path) if Pathname.new(path).basename.to_s == id
       Find.prune if id.match(/^006/) && i != 0
     end
-    binding.pry
     dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
   end
 

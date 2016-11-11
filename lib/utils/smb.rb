@@ -24,31 +24,14 @@ class SMB
 
   def improved_sync
     @copied_cache_folder.each_child.with_index do |entity, i|
+      puts i if i % 10000 == 0
       improved_process_path_entity(entity)
     end
-    # Thread.new do 
-    #   seconds_elapsed ||= 0
-    #   loop do
-    #     statuses = instance_variables.select{|v| v =~ /worker\d+/}.map{|worker| worker.status}.uniq
-    #     puts statuses
-    #     if statuses.count == 1 && status.include?(false)
-    #       DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
-    #       break
-    #     elsif statuses.count == 1 && status.first.nil?
-    #       break
-    #     else
-    #       puts "Waited #{seconds_elapsed} seconds"
-    #       seconds_elapsed += 3
-    #       sleep 3
-    #     end
-    #   end
-    # end
   end
 
   def improved_process_path_entity(entity)
     if entity.directory?
       entity.each_child.with_index do |child, i|
-        puts "#{i} #{child}" if i % 10000 == 0 && i != 0
         improved_process_path_entity(child)
       end
     end
