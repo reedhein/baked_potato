@@ -13,8 +13,14 @@ module Utils
         _time = time
       end
       _time.strftime("%Y-%m-%dT%H:%M:%S%z").insert(-3, ':')
+    rescue => e
+      ap e.backtrace
+      binding.pry
     end
 
+    def self.trevor_format_time(time)
+      DateTime.strptime(time, '%m/%d/%y %H:%M' )
+    end
     def self.soql_time_to_datetime(time)
       DateTime.parse(time.gsub("T", ' ').gsub(/\.\d+(?:\+|-)\d+/,' '))
     end

@@ -1,3 +1,4 @@
+# encoding: UTF-8
 require 'pry'
 require 'active_support/time'
 require 'awesome_print'
@@ -13,6 +14,18 @@ ActiveSupport::TimeZone[-8]
 class DataPotato
   def initialize(path = nil)
     DB::ImageProgressRecord.create_new_from_path(path) if path
+  end
+
+  def format_csv_date_column
+    fun = CSV.generate do |csv|
+      CSV.read('Transaction Backload_2013_Solo Test.csv', :encoding => 'windows-1251:utf-8', headers: true).each do |row|
+        better_time = Utils::SalesForce.trevor_format_time(row["Gateway Date"])
+        row["Gateway Date"] = better_time
+        csv << row
+      end
+    end
+    puts fun
+    binding.pry
   end
 
   def populate_all_box_dbs
@@ -197,8 +210,9 @@ end
 w = WorkerPool.instance
 count = w.tasks.size
 dp =  DataPotato.new
+dp.format_csv_date_column
 binding.pry
-SMB.new.improved_sync
+# SMB.new.improved_sync
 while w.tasks.size > 1 do
   sleep 1
   new_count = w.tasks.size
