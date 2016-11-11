@@ -1,0 +1,23 @@
+!!! 5
+%head
+  %title Frup Fixer
+  %link{ rel: 'stylesheet', href: '/stylesheets/bootstrap.css'}
+  %link{ rel: 'stylesheet', href: '/stylesheets/font-awesome.min.css' }
+  %link{ rel: 'stylesheet', href: '/stylesheets/bootstrap-editable.css' }
+%body{style: "background-color: #0C1017; background-image: url('/domo_kun_and_tree_blossoms-wallpaper-1920x1080.jpg'); background-size: 100% 100% ; background-repeat:no-repeat; min-height: 70em"}
+  %nav.navbar.navbar-dark
+    %a.navbar-brand{href: '/'}
+      Kitten Clicker
+    %ul.nav.navbar-nav
+      %li.nav-item.active
+        %a.nav-link{href: '#'}
+          Home
+      %li.nav-item.active
+        %a.nav-link{href: '#'}
+          Login
+  .container-fluid{style: 'height: 100%; min-height: 100%'}
+    .row
+      .col-sm-6.col-md-6.col-xlg-6.offset-md-0.offset-lg-0.offset-xl-0{sytle: ''}
+        .col-lg-2.offset-lg-4{style: 'padding: 25em 0em'}
+            %form{:name => "frup_fixer", :action => "/frup_fixer", :method => "post"}
+              %input{name: :sobject_id}

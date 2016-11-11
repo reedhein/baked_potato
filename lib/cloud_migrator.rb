@@ -28,6 +28,25 @@ class CloudMigrator
     @offset_count         = @meta.offset_counter
   end
 
+  def frup_fixer(id)
+    binding.pry
+    sobject = @sf_client.custom_query(construct_opp_query(id: id)).first
+    frups   = query_frup(sobject, debug: true)
+    old_folder  = @box_client.folder(frups.first.box__folder_id__c)
+    @box_client.update_folder(folder, name: folder.name + '(backup)')
+    frups.each do |frup|
+      frup.delete
+    end
+    sobject.update({'Create_Box_Folder__c': true})
+    sleep 5
+    frups = query_frup(sobject, debug: true)
+    new_folder = @box_client.folder(frups.first.box__folder_id__c)
+    files = old_folder.files
+    files.each do |file|
+      @box_client.move_file(file, new_folder)
+    end
+  end
+
   def produce_single_snapshot_from_scratch(id)
     opportunity = @sf_client.custom_query(query: construct_opp_query(id: id)).first
     folder = create_folder(opportunity)
@@ -396,12 +415,17 @@ class CloudMigrator
     query
   end
 
-  def query_frup(sobject)
+  def query_frup(sobject, debug: false)
     db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id)
-    if db.present? && db.box__folder_id__c.present?
+    if db.present? && db.box__folder_id__c.present? && debug == false
       db
     else
-      @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'").first
+      frups = @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'")
+      if debug
+        frups
+      else
+        frups.first
+      end
     end
   end
 

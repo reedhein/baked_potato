@@ -55,6 +55,10 @@ class BakedPotato < Sinatra::Base
     redirect "/salesforce/#{opp_id}"
   end
 
+  get '/frup_fixer' do
+    haml :frup_fixer
+  end
+
   get '/refresh/:id' do
     cm = CloudMigrator.new
     cm.produce_single_snapshot_from_scratch(params[:id])
