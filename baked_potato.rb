@@ -59,6 +59,24 @@ class BakedPotato < Sinatra::Base
     haml :frup_fixer
   end
 
+  post '/frup_fixer' do 
+    cm = CloudMigrator.new
+    cm.frup_fixer(params[:sobject_id])
+    redirect "http://na34.salesforce.com/#{params[:id]}"
+  end
+
+  get '/authorize' do
+    user = DB::User.first_or_create(email: params[:email])
+    user.update(
+      salesforce_auth_token:    params[:salesforce_auth_token],
+      salesforce_refresh_token: params[:salesforce_refresh_token],
+      box_auth_token:           params[:box_auth_token],
+      box_refresh_token:        params[:box_refresh_token]
+    )
+    session[:box][:email] = user.email
+    redirect '/'
+  end
+
   get '/refresh/:id' do
     cm = CloudMigrator.new
     cm.produce_single_snapshot_from_scratch(params[:id])

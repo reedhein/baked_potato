@@ -42,8 +42,11 @@ class CronJob
 
 end
 
+binding.pry
 w = WorkerPool.instance
 cj = CronJob.new
+# cj.reconcile_s_drive
+binding.pry
 # copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
 copy_thread   = Thread.new { sleep 1 }

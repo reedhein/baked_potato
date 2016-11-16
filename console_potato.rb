@@ -3,7 +3,7 @@ require 'active_support/time'
 require 'awesome_print'
 require 'yaml'
 require 'watir'
-require 'watir-scroll'
+# require 'watir-scroll'
 require_relative './lib/cache_folder'
 require_relative './lib/utils'
 # require_relative 'data_potato'
@@ -227,52 +227,51 @@ class ConsolePotato
       proposed_file = folder + a.name
       relative_path = proposed_file.to_s.gsub(@dated_cache_folder, '')[1..-1]
       binding.pry if relative_path.nil?
-      begin
-        if !proposed_file.exist? || proposed_file.size == 0
-          @not_there ||= 0
-          @not_there += 1
-          puts "\n"
-          puts "Not there or zero: #{@not_there}"
-          if @not_there % 100 == 0
-            puts proposed_file
-          end
-          puts "\n"
-          sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
-          ipr = DB::ImageProgressRecord.find_from_path(relative_path)
-          ipr.file_id = sf_attachment.id if ipr.file_id.nil?
-          file_body   = sf_attachment.api_object.Body
-          ipr.sha1    = Digest::SHA1.hexdigest(file_body) if ipr.sha1.nil?
-          File.open(proposed_file, 'w') do |f|
-            f.write(file_body)
-          end
-          binding.pry unless ipr.save
-        else #it exists and we are doing temporary sha and id migration
-          ipr = DB::ImageProgressRecord.find_from_path(relative_path)
-          if  proposed_file.exist? && (ipr.file_id.nil? || ipr.sha1.nil?)
-            @there_but_not_fleshed_out ||= 0
-            @there_but_not_fleshed_out  += 1
-            puts "\n"
-            puts "Not fleshed out #{@there_but_not_fleshed_out}"
-            puts "file_id: #{ipr.file_id}"
-            puts "sha1: #{ipr.sha1}"
-            puts "\n"
-            ipr.file_id   = a.id
-            ipr.sha1      = Digest::SHA1.hexdigest(proposed_file.read)
-            binding.pry unless ipr.save
-          end
+      if !proposed_file.exist? || proposed_file.size == 0
+        @not_there ||= 0
+        @not_there += 1
+        puts "\n"
+        puts "Not there or zero: #{@not_there}"
+        if @not_there % 100 == 0
+          puts proposed_file
         end
-      rescue Faraday::ConnectionFailed => e
-        puts e
-        retry
-      rescue DataObjects::ConnectionError
-        puts 'db error'
-        sleep 0.1
-        retry
-      rescue => e
-        ap e.backtrace
-        binding.pry
+        binding.pry if proposed_file.exist? && proposed_file.size == 0
+        puts "\n"
+        sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+        ipr = DB::ImageProgressRecord.find_from_path(relative_path)
+        ipr.file_id = sf_attachment.id if ipr.file_id.nil?
+        file_body   = sf_attachment.api_object.Body
+        ipr.sha1    = Digest::SHA1.hexdigest(file_body) if ipr.sha1.nil?
+        File.open(proposed_file, 'w') do |f|
+          f.write(file_body)
+        end
+        binding.pry unless ipr.save
+      else #it exists and we are doing temporary sha and id migration
+        ipr = DB::ImageProgressRecord.find_from_path(relative_path)
+        if  proposed_file.exist? && (ipr.file_id.nil? || ipr.sha1.nil?)
+          @there_but_not_fleshed_out ||= 0
+          @there_but_not_fleshed_out  += 1
+          puts "\n"
+          puts "Not fleshed out #{@there_but_not_fleshed_out}"
+          puts "file_id: #{ipr.file_id}"
+          puts "sha1: #{ipr.sha1}"
+          puts "\n"
+          ipr.file_id   = a.id
+          ipr.sha1      = Digest::SHA1.hexdigest(proposed_file.read)
+          binding.pry unless ipr.save
+        end
       end
     end
+  rescue Faraday::ConnectionFailed => e
+    puts e
+    retry
+  rescue DataObjects::ConnectionError
+    puts 'db error'
+    sleep 0.1
+    retry
+  rescue => e
+    ap e.backtrace
+    binding.pry
   end
 
   def add_sf_attachments_to_folder(object)

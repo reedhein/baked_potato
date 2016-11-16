@@ -3,7 +3,7 @@ require 'active_support/time'
 require 'awesome_print'
 require 'yaml'
 require 'watir'
-require 'watir-scroll'
+# require 'watir-scroll'
 # require_relative 'data_potato'
 ActiveSupport::TimeZone[-8]
 
@@ -15,7 +15,7 @@ class CloudMigrator
     @sf_client            = Utils::SalesForce::Client.new
     @box_client           = Utils::Box::Client.new
     @worker_pool          = WorkerPool.instance
-    # @browser_tool         = BrowserTool.new(2)
+    @browser_tool         = BrowserTool.new(2)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = determine_cache_folder
@@ -30,21 +30,33 @@ class CloudMigrator
 
   def frup_fixer(id)
     binding.pry
-    sobject = @sf_client.custom_query(construct_opp_query(id: id)).first
+    sobject = @sf_client.custom_query(query: construct_opp_query(id: id)).first
     frups   = query_frup(sobject, debug: true)
     old_folder  = @box_client.folder(frups.first.box__folder_id__c)
-    @box_client.update_folder(folder, name: folder.name + '(backup)')
+    @box_client.update_folder(old_folder, name: old_folder.name + '(backup)')
     frups.each do |frup|
       frup.delete
     end
-    sobject.update({'Create_Box_Folder__c': true})
+    # sobject.update({'Create_Box_Folder__c': true})
+    create_folder_through_browser(sobject)
     sleep 5
     frups = query_frup(sobject, debug: true)
+    old_folder_folders = old_folder.folders
     new_folder = @box_client.folder(frups.first.box__folder_id__c)
     files = old_folder.files
     files.each do |file|
-      @box_client.move_file(file, new_folder)
+      @box_client.move_file(file, new_folder.folders.first)
     end
+    old_folder_folders.each do |folder|
+      folder.files.each do |file|
+        @box_client.move_file(file, new_folder)
+      end
+    end
+    @box_client.delete(old_folder)
+  rescue => e
+    ap e.backtrace
+    binding.pry
+    puts 'YUGE'
   end
 
   def produce_single_snapshot_from_scratch(id)
@@ -435,6 +447,7 @@ class CloudMigrator
     while sf_linked.nil? do
       # TODO the below line should work but it didin't
       # sobject.update({'Create_Box_Folder__c': true})
+      create_folder_through_browser(sobject)
       puts 'sleeping until created'
       sleep 6
       kill_counter += 1
