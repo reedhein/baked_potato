@@ -73,7 +73,9 @@ class BakedPotato < Sinatra::Base
       box_auth_token:           params[:box_auth_token],
       box_refresh_token:        params[:box_refresh_token]
     )
+    session[:box] ||= {}
     session[:box][:email] = user.email
+    session[:email] = user.email
     redirect '/'
   end
 
@@ -103,19 +105,26 @@ class BakedPotato < Sinatra::Base
   end
 
   get '/salesforce/:id' do 
+    if session.nil? || session[:box].nil? || session[:box][:email].nil?
+      redirect 'https://teamkatlas.com/'
+    end
     begin
       record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
       if record.object_type == :opportunity
         @opportunity  = CacheFolder.find_from_record(record)
-      else #recrod.object_type == :case
+      else
         sf_case = CacheFolder.find_from_record(record)
         @opportunity = sf_case.opportunity
       end
+      audit_opportunity
       @cases = @opportunity.cases
       haml :index
+    rescue Restforce::UnauthorizedError
+      redirect 'https://teamkatlas.com/unauthenticate'
     rescue  => e
       ap e.backtrace
       binding.pry
+      puts e
     end
   end
 
@@ -152,7 +161,6 @@ class BakedPotato < Sinatra::Base
   end
 
   get '/logout' do
-    # request.env['rack.session'] = {}
     session.clear
     redirect '/'
   end
@@ -164,11 +172,10 @@ class BakedPotato < Sinatra::Base
     when 'salesforcesandbox'
       save_salesforce_credentials('salesforcesandbox')
     when 'box'
-      # creds = Boxr::get_tokens(params['code'])
-      creds = Boxr::get_tokens(code=params[:code], client_id: CredService.creds.box.kitten_clicker.client_id, client_secret: CredService.creds.box.kitten_clicker.client_secret)
+      creds  = Boxr::get_tokens(code=params[:code], client_id: CredService.creds.box.kitten_clicker.client_id, client_secret: CredService.creds.box.kitten_clicker.client_secret)
       client = create_box_client_from_creds(creds)
-      user = populate_box_creds_to_db(client)
-      session[:box] = {}
+      user   = populate_box_creds_to_db(client)
+      session[:box]         = {}
       session[:box][:email] = user.email
       redirect '/'
     else
@@ -271,8 +278,21 @@ class BakedPotato < Sinatra::Base
     end
   end
 
+  before '/*' do 
+    @user_email = session[:email]
+  end
+
   private
 
+  def audit_opportunity
+    if @opportunity.meta[:name].blank? ||
+        @opportunity.cases.detect{ |c| c.meta[:name].nil? && c.meta[:subject].nil? } ||
+          @opportunity.box_folders.detect{ |bf| bf.meta.nil? || bf.meta[:name].nil? }
+      puts 'need to spot check'
+      cm = CloudMigrator.new
+      cm.produce_single_snapshot_from_scratch(params[:id])
+    end
+  end
   def search_s_drive_from_sting(string)
     search_terms = string.squish.scan(/\w+/)
     records = []
