@@ -17,8 +17,6 @@ module Utils
         begin
           puts query
           result = @client.query(query)
-        rescue Restforce::UnauthorizedError
-          binding.pry #kill those threads
         rescue Faraday::ConnectionFailed
           if kill_counter > 1
             puts '*'*88

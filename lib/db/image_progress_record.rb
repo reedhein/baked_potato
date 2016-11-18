@@ -66,10 +66,10 @@ module DB
       else
         dest_path = dest
       end
-      self.moved_from  = self.full_path
-      self.full_path   = dest_path + filename
-      self.parent_type = self.class.parent_type(dest_path)
-      self.file_id     = new_id if new_id
+      self.moved_from     = self.full_path
+      self.relative_path  = dest_path.sub(self.send(env_path), '').sub('/' + Date.today.to_s , '') + filename
+      self.parent_type    = self.class.parent_type(dest_path)
+      self.file_id        = new_id if new_id
       save
       self
     rescue => e
@@ -78,10 +78,14 @@ module DB
     end
 
     def full_path
+      self.send(env_path) + Date.today.to_s + relative_path
+    end
+
+    def env_path
       if RbConfig::CONFIG['host_os'] =~ /darwin/
-        mac_base_path + Date.today.to_s + relative_path
+        :mac_base_path
       else
-        linx_base_path + Date.today.to_s + relative_path
+        :linx_base_path
       end
     end
 

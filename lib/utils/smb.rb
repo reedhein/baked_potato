@@ -8,7 +8,7 @@ class SMB
     @worker_pool = WorkerPool.instance
     @cache_folder = Pathname.new('/home/doug/Sandbox/s_drive/Client Management/REED HEIN and ASSOCIATES/_Timeshare Exits')
     @copied_cache_folder = Pathname.new('/home/doug/Sandbox/s_drive_exits_backup/')
-    @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA', columns: 500)
+    # @smb_client = Sambal::Client.new(host: host, user: user, password: password, share:'DATA', columns: 500)
     dynanmic_methods_for_client
     @count  ||= 0
   end

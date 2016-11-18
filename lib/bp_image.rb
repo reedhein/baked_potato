@@ -25,14 +25,16 @@ class BPImage
   end
 
   def self.find_by_id(id)
-    records = DB::ImageProgressRecord.all(file_id: id)
-    if records.count > 1 && records.map(&:sha1).uniq.count == 1
-      latest_record = records.sort_by{|r| Date.parse(r.date)}.last
-      records.each{|r| r.destroy unless r == latest_record}
-    end
-    bpi = self.new(records.first.full_path)
-    bpi.db_image = records.first
+    record = DB::ImageProgressRecord.first(file_id: id)
+    # record ||= DB::BoxFile.first(box_id: id)
+    bpi = self.new(record.full_path)
+    bpi.db_image = record
     bpi
+  rescue => e
+    ap e.backtrace[0..3]
+    puts id
+    binding.pry
+    puts e
   end
 
   def self.id_from_path(path)

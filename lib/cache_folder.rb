@@ -72,6 +72,10 @@ class CacheFolder
     BPImage.new(self).db.sha1 if type == :file
   end
 
+  def filename
+    BPImage.new(self).db.filename if type == :file
+  end
+
   def determin_meta
     if parent_type == :box
       box_parent_db
@@ -93,7 +97,7 @@ class CacheFolder
     parent = path.ascend.detect do |entity|
       entity.directory? && entity.basename.to_s =~ /\d{10,}/
     end
-    DB::BoxFolder.first(box_id: parent.basename.to_s)
+    DB::BoxFolder.first(box_id: parent.basename.to_s) || Utils::Box::Client.new.folder(parent.basename.to_s).storage_object
   end
 
   def opportunity
