@@ -1,0 +1,347 @@
+GIT
+  remote: https://github.com/reedhein/rubyzoho.git
+  revision: 5a4a3ee1e1b17e565f3a5774bca6cc02cdcc3343
+  specs:
+    rubyzoho (0.7.0)
+      activemodel (>= 3.0)
+      httmultiparty (>= 0.3)
+      mime-types (>= 2.6)
+      multipart-post (>= 1.0)
+      roxml (>= 1.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    Ascii85 (1.0.2)
+    activemodel (5.0.0.1)
+      activesupport (= 5.0.0.1)
+    activesupport (5.0.0.1)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      i18n (~> 0.7)
+      minitest (~> 5.1)
+      tzinfo (~> 1.1)
+    addressable (2.5.0)
+      public_suffix (~> 2.0, >= 2.0.2)
+    afm (0.2.2)
+    awesome_print (1.7.0)
+    backports (3.6.8)
+    bcrypt (3.1.11)
+    bcrypt-ruby (3.1.5)
+      bcrypt (>= 3.1.3)
+    boxr (1.2.0)
+      addressable (~> 2.3)
+      hashie (~> 3.3)
+      httpclient (~> 2.5)
+      jwt (~> 1.4)
+      oj (~> 2.11)
+    byebug (9.0.6)
+    call-me (0.0.2.3)
+      refining
+    childprocess (0.5.9)
+      ffi (~> 1.0, >= 1.0.11)
+    classifier-reborn (2.0.4)
+      fast-stemmer (~> 1.0)
+    coderay (1.1.1)
+    combine_pdf (0.2.31)
+      ruby-rc4 (>= 0.1.5)
+    concurrent-ruby (1.0.2)
+    connection_pool (2.2.1)
+    cookiejar (0.3.3)
+    daemons (1.2.4)
+    data_mapper (1.2.0)
+      dm-aggregates (~> 1.2.0)
+      dm-constraints (~> 1.2.0)
+      dm-core (~> 1.2.0)
+      dm-migrations (~> 1.2.0)
+      dm-serializer (~> 1.2.0)
+      dm-timestamps (~> 1.2.0)
+      dm-transactions (~> 1.2.0)
+      dm-types (~> 1.2.0)
+      dm-validations (~> 1.2.0)
+    data_objects (0.10.17)
+      addressable (~> 2.1)
+    deepstruct (0.0.7)
+    dhash (0.0.2)
+      rmagick
+    dm-aggregates (1.2.0)
+      dm-core (~> 1.2.0)
+    dm-constraints (1.2.0)
+      dm-core (~> 1.2.0)
+    dm-core (1.2.1)
+      addressable (~> 2.3)
+    dm-do-adapter (1.2.0)
+      data_objects (~> 0.10.6)
+      dm-core (~> 1.2.0)
+    dm-migrations (1.2.0)
+      dm-core (~> 1.2.0)
+    dm-postgres-adapter (1.2.0)
+      dm-do-adapter (~> 1.2.0)
+      do_postgres (~> 0.10.6)
+    dm-serializer (1.2.2)
+      dm-core (~> 1.2.0)
+      fastercsv (~> 1.5)
+      json (~> 1.6)
+      json_pure (~> 1.6)
+      multi_json (~> 1.0)
+    dm-sqlite-adapter (1.2.0)
+      dm-do-adapter (~> 1.2.0)
+      do_sqlite3 (~> 0.10.6)
+    dm-timestamps (1.2.0)
+      dm-core (~> 1.2.0)
+    dm-transactions (1.2.0)
+      dm-core (~> 1.2.0)
+    dm-types (1.2.2)
+      bcrypt-ruby (~> 3.0)
+      dm-core (~> 1.2.0)
+      fastercsv (~> 1.5)
+      json (~> 1.6)
+      multi_json (~> 1.0)
+      stringex (~> 1.4)
+      uuidtools (~> 2.1)
+    dm-validations (1.2.0)
+      dm-core (~> 1.2.0)
+    do_postgres (0.10.17)
+      data_objects (= 0.10.17)
+    do_sqlite3 (0.10.17)
+      data_objects (= 0.10.17)
+    domain_name (0.5.20161021)
+      unf (>= 0.0.5, < 1.0.0)
+    em-http-request (1.1.5)
+      addressable (>= 2.3.4)
+      cookiejar (!= 0.3.1)
+      em-socksify (>= 0.3)
+      eventmachine (>= 1.0.3)
+      http_parser.rb (>= 0.6.0)
+    em-socksify (0.3.1)
+      eventmachine (>= 1.0.0.beta.4)
+    eventmachine (1.2.1)
+    faraday (0.9.2)
+      multipart-post (>= 1.2, < 3)
+    faraday_middleware (0.10.1)
+      faraday (>= 0.7.4, < 1.0)
+    fast-stemmer (1.0.2)
+    fastercsv (1.5.5)
+    faye (1.2.3)
+      cookiejar (>= 0.3.0)
+      em-http-request (>= 0.3.0)
+      eventmachine (>= 0.12.0)
+      faye-websocket (>= 0.9.1)
+      multi_json (>= 1.0.0)
+      rack (>= 1.0.0)
+      websocket-driver (>= 0.5.1)
+    faye-websocket (0.10.5)
+      eventmachine (>= 0.12.0)
+      websocket-driver (>= 0.5.1)
+    ffi (1.9.14)
+    ffi-extra (0.1.0)
+      ffi
+    ffi-inline (0.0.4.3)
+      ffi (>= 0.4.0)
+    grim (1.3.0)
+    haml (4.0.7)
+      tilt
+    hashery (2.1.2)
+    hashie (3.4.6)
+    httmultiparty (0.3.16)
+      httparty (>= 0.7.3)
+      mimemagic
+      multipart-post
+    http-cookie (1.0.3)
+      domain_name (~> 0.5)
+    http_parser.rb (0.6.0)
+    httparty (0.14.0)
+      multi_xml (>= 0.5.2)
+    httpclient (2.8.2.4)
+    i18n (0.7.0)
+    iso-639 (0.2.8)
+    json (1.8.3)
+    json_pure (1.8.3)
+    jwt (1.5.6)
+    listen (3.1.5)
+      rb-fsevent (~> 0.9, >= 0.9.4)
+      rb-inotify (~> 0.9, >= 0.9.7)
+      ruby_dep (~> 1.2)
+    macaddr (1.7.1)
+      systemu (~> 2.6.2)
+    mechanize (2.7.5)
+      domain_name (~> 0.5, >= 0.5.1)
+      http-cookie (~> 1.0)
+      mime-types (>= 1.17.2)
+      net-http-digest_auth (~> 1.1, >= 1.1.1)
+      net-http-persistent (~> 2.5, >= 2.5.2)
+      nokogiri (~> 1.6)
+      ntlm-http (~> 0.1, >= 0.1.1)
+      webrobots (>= 0.0.9, < 0.2)
+    method_source (0.8.2)
+    mime-types (3.1)
+      mime-types-data (~> 3.2015)
+    mime-types-data (3.2016.0521)
+    mimemagic (0.3.2)
+    mini_portile2 (2.1.0)
+    minitest (5.9.1)
+    multi_json (1.12.1)
+    multi_xml (0.5.5)
+    multipart-post (2.0.0)
+    net-http-digest_auth (1.4)
+    net-http-persistent (2.9.4)
+    nokogiri (1.6.8.1)
+      mini_portile2 (~> 2.1.0)
+    ntlm-http (0.1.1)
+    oauth2 (1.2.0)
+      faraday (>= 0.8, < 0.10)
+      jwt (~> 1.0)
+      multi_json (~> 1.3)
+      multi_xml (~> 0.5)
+      rack (>= 1.2, < 3)
+    oj (2.17.5)
+    omniauth (1.3.1)
+      hashie (>= 1.2, < 4)
+      rack (>= 1.0, < 3)
+    omniauth-oauth2 (1.4.0)
+      oauth2 (~> 1.0)
+      omniauth (~> 1.2)
+    omniauth-salesforce (1.0.5)
+      omniauth (~> 1.0)
+      omniauth-oauth2 (~> 1.0)
+    pdf-reader (1.4.0)
+      Ascii85 (~> 1.0.0)
+      afm (~> 0.2.1)
+      hashery (~> 2.0)
+      ruby-rc4
+      ttfunk
+    pg (0.19.0)
+    pry (0.10.4)
+      coderay (~> 1.1.0)
+      method_source (~> 0.8.1)
+      slop (~> 3.4)
+    pry-byebug (3.4.0)
+      byebug (~> 9.0)
+      pry (~> 0.10)
+    public_suffix (2.0.4)
+    rack (1.6.5)
+    rack-protection (1.5.3)
+      rack
+    rack-test (0.6.3)
+      rack (>= 1.0)
+    rb-fsevent (0.9.8)
+    rb-inotify (0.9.7)
+      ffi (>= 0.5.0)
+    rb-readline (0.5.3)
+    redis (3.3.2)
+    refining (0.0.5.5)
+    rerun (0.11.0)
+      listen (~> 3.0)
+    restforce (2.4.2)
+      faraday (~> 0.9.0)
+      faraday_middleware (>= 0.8.8)
+      hashie (>= 1.2.0, < 4.0)
+      json (>= 1.7.5)
+    rmagick (2.16.0)
+    roxml (3.3.1)
+      activesupport (>= 2.3.0)
+      nokogiri (>= 1.3.3)
+    ruby-growl (4.1)
+      uuid (~> 2.3, >= 2.3.5)
+    ruby-rc4 (0.1.5)
+    ruby_dep (1.5.0)
+    rubyzip (1.2.0)
+    sambal (0.1.7)
+    sass (3.4.22)
+    selenium-webdriver (3.0.1)
+      childprocess (~> 0.5)
+      rubyzip (~> 1.0)
+      websocket (~> 1.0)
+    sidekiq (4.2.6)
+      concurrent-ruby (~> 1.0)
+      connection_pool (~> 2.2, >= 2.2.0)
+      rack-protection (>= 1.5.0)
+      redis (~> 3.2, >= 3.2.1)
+    sinatra (1.4.7)
+      rack (~> 1.5)
+      rack-protection (~> 1.4)
+      tilt (>= 1.3, < 3)
+    sinatra-contrib (1.4.7)
+      backports (>= 2.0)
+      multi_json
+      rack-protection
+      rack-test
+      sinatra (~> 1.4.0)
+      tilt (>= 1.3, < 3)
+    sinatra-partial (1.0.0)
+      sinatra (~> 1.4)
+    sinatra-reloader (1.0)
+      sinatra-contrib
+    slop (3.6.0)
+    stringex (1.5.1)
+    systemu (2.6.5)
+    tesseract-ocr (0.1.8)
+      call-me
+      ffi-extra
+      ffi-inline
+      iso-639
+    thin (1.7.0)
+      daemons (~> 1.0, >= 1.0.9)
+      eventmachine (~> 1.0, >= 1.0.4)
+      rack (>= 1, < 3)
+    thread_safe (0.3.5)
+    tilt (2.0.5)
+    ttfunk (1.4.0)
+    tzinfo (1.2.2)
+      thread_safe (~> 0.1)
+    unf (0.1.4)
+      unf_ext
+    unf_ext (0.0.7.2)
+    uuid (2.3.8)
+      macaddr (~> 1.0)
+    uuidtools (2.1.5)
+    watir (6.0.2)
+      selenium-webdriver (~> 3.0)
+    watir-scroll (0.3.0)
+      watir (>= 6.0)
+    webrobots (0.1.2)
+    websocket (1.2.3)
+    websocket-driver (0.6.4)
+      websocket-extensions (>= 0.1.0)
+    websocket-extensions (0.1.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  activesupport
+  awesome_print
+  boxr
+  classifier-reborn
+  combine_pdf
+  data_mapper
+  deepstruct
+  dhash
+  dm-postgres-adapter
+  dm-sqlite-adapter
+  faye
+  grim
+  haml
+  mechanize
+  omniauth-salesforce
+  pdf-reader
+  pg
+  pry
+  pry-byebug
+  rb-readline
+  rerun
+  restforce
+  ruby-growl
+  rubyzoho!
+  sambal
+  sass
+  sidekiq
+  sinatra
+  sinatra-partial
+  sinatra-reloader
+  tesseract-ocr
+  thin
+  watir
+  watir-scroll
+
+BUNDLED WITH
+   1.13.6
