@@ -4,8 +4,4 @@ dev.db
 **/*.swp
 **/*.swo
 public/201*
-Gemfile
-Gemfile.lock
-.ruby-version
-.ruby-gemset
 
