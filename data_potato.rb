@@ -17,14 +17,22 @@ class DataPotato
   end
 
   def format_csv_date_column
+    working_csv = nil
     fun = CSV.generate do |csv|
-      CSV.read('Transaction Backload_2013_Solo Test.csv', :encoding => 'windows-1251:utf-8', headers: true).each do |row|
+      working_csv = CSV.read('Transaction Backload_2013.csv', :encoding => 'windows-1251:utf-8', headers: true)
+      working_csv.each do |row|
         better_time = Utils::SalesForce.trevor_format_time(row["Gateway Date"])
-        row["Gateway Date"] = better_time
+        even_better_time = better_time.in_time_zone("Pacific Time (US & Canada)")
+        final_time = Utils::SalesForce.format_time_to_soql(even_better_time)
+        row["Gateway Date"] = final_time
         csv << row
       end
     end
-    puts fun
+    finished_csv = CSV.parse(fun)
+    finished_csv.prepend working_csv.headers
+    File.open('funtimes.csv', 'w') do |f|
+      f << fun
+    end
     binding.pry
   end
 
@@ -220,7 +228,9 @@ end
 w = WorkerPool.instance
 count = w.tasks.size
 dp =  DataPotato.new
-SMB.new.improved_sync
+dp.format_csv_date_column
+binding.pry
+puts dp
 while w.tasks.size > 1 do
   sleep 1
   new_count = w.tasks.size

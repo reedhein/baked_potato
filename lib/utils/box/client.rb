@@ -55,6 +55,11 @@ module Utils
               else
                 return_value
               end
+            rescue HTTPClient::ConnectTimeoutError => e
+              ap e.backtrace
+              puts "execution expired"
+              sleep 0.5
+              retry
             rescue Boxr::BoxrError => e
               if e.to_s.match(/(Item is trashed|Not Found)/)
                 return nil

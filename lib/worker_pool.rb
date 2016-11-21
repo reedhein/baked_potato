@@ -1,7 +1,7 @@
 require 'thread'
 
 class WorkerPool
-  WAIT_TIMEOUT = 0.1 # 1 tenth second
+  WAIT_TIMEOUT = 0.01 # 1 tenth second
   include Singleton
   attr_accessor :tasks, :workers
 
@@ -31,12 +31,16 @@ class WorkerPool
             end
           end
         rescue ThreadError => e
+          Thread.current["error"] = e
           ap e.backtrace
           puts e.inspect
+          ap $!
           sleep 5
           binding.pry
         rescue => e
+          Thread.current["error"] = e
           ap e.backtrace
+          ap $!
           sleep 5
           puts e.inspect
         end

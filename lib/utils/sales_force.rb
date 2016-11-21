@@ -19,8 +19,10 @@ module Utils
     end
 
     def self.trevor_format_time(time)
-      DateTime.strptime(time, '%m/%d/%y %H:%M' )
+      # DateTime.strptime(time, '%m/%d/%y %H:%M' )
+      DateTime.strptime(time, '%m/%d/%Y' )
     end
+
     def self.soql_time_to_datetime(time)
       DateTime.parse(time.gsub("T", ' ').gsub(/\.\d+(?:\+|-)\d+/,' '))
     end
