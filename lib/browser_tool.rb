@@ -34,6 +34,14 @@ class BrowserTool
     agent.unlock
   end
 
+  def visit_salesforce(sobject)
+    binding.pry
+    puts sobject_url(sobject)
+    queue_work do |agent|
+      agent.goto sobject_url(sobject)
+    end
+  end
+
   def create_folder(sobject)
     lightning = false
     queue_work do |agent|
@@ -87,8 +95,9 @@ class BrowserTool
   end
 
   def log_in_to_salesforce(agent)
+    binding.pry
     agent.goto(@sf_login)
-    agent.text_field(id: 'username').when_present.set @sf_username
+    agent.text_field(id: 'username').set @sf_username
     agent.text_field(id: 'password').set @sf_password
     agent.button(name: 'Login').click
     if @lightning

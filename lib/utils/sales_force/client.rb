@@ -6,7 +6,8 @@ module Utils
       include Inspector
       attr_reader :client
 
-      def initialize(user = DB::User.Doug)
+      def initialize(user = DB::User.Doug, debug: false)
+        @debug = debug
         @client = self.class.client(user)
         dynanmic_methods_for_client
       end
@@ -26,9 +27,15 @@ module Utils
             sleep 3
             retry
           end
-        rescue => e
-          ap e.backtrace
-          binding.pry
+        rescue Restforce::UnauthorizedError => e
+          if  @debug
+            ap e.backtrace
+            binding.pry
+          elsif e.message =~ /INVALID_SESSION_ID/ && @debug == false
+            raise e
+          else
+            raise e
+          end
         end
         return [] if result.count < 1
         object_type = result.first.dig('attributes', 'type')

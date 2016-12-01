@@ -1,0 +1,11 @@
+%h3
+  = folder.meta[:name]
+%li.list-group-item{id: folder.id}
+  %fieldset
+    %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
+      - folder.files.each do |file|
+        %li.list-group-item.screenable{ data: { id: BPImage.new(file).id, location: s_object.cloud_path, sha1: file.sha1, name: file.filename, home: folder.id} }
+          .text-xs-left
+            %i.btn.btn-default.fa.fa-lg{class: iconify(file), style: 'box-shadow: 0 0 1px 1px black;float:left'}
+          .clearfix
+          = file.path.basename.to_s

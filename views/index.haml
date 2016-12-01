@@ -29,12 +29,14 @@
             "logged in as #{session[:email]}
       -else
         %li.nav-item
-          %a.nav-link{href: '#'}
+          %a.nav-link{href: "http://teamkatlas.com/?#{env.location}"}
             Login
       %li.nav-item
         %button.btn.btn-primary.btn-lg.refresh_page_data{"data-target" => "#myModal", "data-toggle" => "modal", :type => "button"}
           Refresh
+
   = partial(:_refresh_modal)
+
   .container-fluid
     .row
       - if @image
@@ -117,7 +119,6 @@
         function(){ $('.source-file').removeClass('glow') }
       );
 
-      window.file_title = $('h5.inline-editable.image-name')
       $('.refresh_page_data').on('click', function(e){
          e.preventDefault();
          id = document.location.pathname.split('/').slice(-1)[0]
@@ -128,48 +129,74 @@
          })
       })
 
-      $('.screenable').click(function(e){
-        file_title = $('h5.inline-editable.image-name')
-        id = $(this).data('id')
-        $.getJSON('/file/' + id, function( data ) {
-          new_pdf = $('.preview-window').attr('src', data.image_path ).hide()
-          $('.preview-window').remove()
-          $('.container-fluid .row:first').prepend(new_pdf)
-          $('.preview-window').fadeIn();
-          local_file_data = "<h5 class='inline-editable image-name'><b>Name: </b><a class='editable editable-click' data-id='" + data.id + "'>" + data.name + "</h5></a>"
-          $('h5.inline-editable.image-name').remove()
-          danger_button = $('.file-data .btn-danger').attr('id', data.id)
-          $('.file-data .btn-danger').remove()
-          $('.file-data').prepend(local_file_data)
-          $('.file-data').prepend(danger_button)
-          $('.file-data .image-location .cloud_path').text(data.location)
-          /* duplicate */
-          $('.file-data a').editable(
-            {
-              type: 'text',
-              name: 'file_name',
-              pk: function(){console.log($(this).data('id')); return $(this).data('id')},
-              params: {email: $('#user_email').data('email')},
-              url: '/edit_file_name'
+      $('body').on('click', '.screenable', function(e){
+        /* 
+        get teh object
+        append home destination
+        on successful move, move object to new destination delete old object
+        on successful rename, modify staged & orig object and replace
+        on successful delete, remove original object and staged object
+        */
+        var d = new Date();
+        var new_time = d.getTime();
+        screenable = $(this)
+        screenable.attr('id', new_time)
+        $('.file-data .screenable').remove()
+        screenable_staged = screenable.clone().hide()
+        $('.file-data').append(screenable_staged)
+        id = screenable.data('id')
+        $.getJSON(
+          {
+            url: '/file/' + id,
+            success: function( data ) {
+              new_pdf = $('.preview-window').attr('src', data.image_path ).hide()
+              $('.preview-window').remove()
+              $('.container-fluid .row:first').prepend(new_pdf)
+              $('.preview-window').fadeIn();
+              local_file_data = "<h5 class='inline-editable image-name'><b>Name: </b><a class='editable editable-click' data-id='" + data.id + "'>" + data.name + "</h5></a>"
+              $('h5.inline-editable.image-name').remove()
+              danger_button = $('.file-data .btn-danger').attr('id', data.id)
+              $('.file-data .btn-danger').remove()
+              $('.file-data').prepend(local_file_data)
+              $('.file-data').prepend(danger_button)
+              $('.file-data .image-location .cloud_path').text(data.location)
+              /* duplicated */
+              $('.file-data a').editable(
+                {
+                  type: 'text',
+                  name: 'file_name',
+                  pk: function(){console.log($(this).data('id')); return $(this).data('id')},
+                  params: {email: $('#user_email').data('email')},
+                  url: '/edit_file_name'
+              });
             }
-          );
-        })
+          }
+        )
       })
 
-      $('i.deleteable').click(function(e){
+      $('body').on('click', 'i.deleteable', function(e){
         e.preventDefault();
         e.stopPropagation();
-        id_to_delete = $(this).parent().data('id')
-        delete_confirm = confirm('do you want to delete?')
+        delete_click_target = $(this)
+        debugger
+        id_to_delete = delete_click_target.attr('id')
+        if (id_to_delete == undefined) {
+          debugger
+        }
+        delete_confirm = confirm('do you want to delete?' + ' ' + id_to_delete)
         if (delete_confirm) {
-          $.post('/delete_file',
-            {
-              file_id: id_to_delete
-            },
-            function(response) {
+          $.post({
+
+            url: '/delete_file',
+            data: { file_id: id_to_delete },
+            timeout: 1000*60*3,
+            success: function(response) {
               console.log(response)
+              staged_object = delete_click_target.parent().children('.screenable')
+              id_to_delete = staged_object.attr('id')
+              $('#' + id_to_delete).hide()
             }
-          )
+          })
         }
       })
 
@@ -185,9 +212,10 @@
 
       $('.action').click(function(e){
         e.preventDefault()
-        lol_confirm = confirm("move: " + $('.file-data a').data('id') + "to: " + $(this).data('id'));
+        lol_confirm = confirm("move: " + $('.file-data a').data('name') + "to: " + $(this).data('id'));
 
         if (lol_confirm) {
+          screenable_stage = $('.file-data .screenable')
           $.post('/move_file',
             {
               destination_id: $(this).data('id'),
@@ -195,11 +223,10 @@
               email: $('#user_email').data('email')
             },
             function(response) {
+              debugger
               console.log(response)
-              home = $("ul.droppable li#" + response.destination_id )
-              item = $("li[data-id='" + response.original_id + "']")
-              home.append(item)
-              item.hide()
+              screenable_stage.data('home', response.destination_id)
+              $('#' + response.destination_id + ' ' + 'ul.list-group').append(screenable_stage)
             },
             'json'
           );

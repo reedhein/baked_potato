@@ -9,13 +9,14 @@ ActiveSupport::TimeZone[-8]
 
 class CloudMigrator
   attr_reader :browser_tool, :dated_cache_folder
-  def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil)
+  def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil, user: nil)
     Utils.environment     = @environment = environment
+    @user                 = user
     @id                   = id
-    @sf_client            = Utils::SalesForce::Client.new
-    @box_client           = Utils::Box::Client.new
+    @sf_client            = Utils::SalesForce::Client.new(@user || DB::User.Doug)
+    @box_client           = Utils::Box::Client.new(@user || DB::User.Doug)
     @worker_pool          = WorkerPool.instance
-    # @browser_tool         = BrowserTool.new(2)
+    @browser_tool         = BrowserTool.new(2)
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = determine_cache_folder
@@ -29,30 +30,37 @@ class CloudMigrator
   end
 
   def frup_fixer(id)
-    binding.pry
-    sobject = @sf_client.custom_query(query: construct_opp_query(id: id)).first
+    if id =~ /^500/
+      query = construct_case_query(id: id)
+    else
+      query = construct_opp_query(id: id)
+    end
+    sobject = @sf_client.custom_query(query: query).first
     frups   = query_frup(sobject, debug: true)
-    old_folder  = @box_client.folder(frups.first.box__folder_id__c)
-    @box_client.update_folder(old_folder, name: old_folder.name + '(backup)')
+    old_folder  = @box_client.folder(frups.first.box__folder_id__c) 
     frups.each do |frup|
       frup.delete
     end
     # sobject.update({'Create_Box_Folder__c': true})
-    create_folder_through_browser(sobject)
-    sleep 5
-    frups = query_frup(sobject, debug: true)
-    old_folder_folders = old_folder.folders
-    new_folder = @box_client.folder(frups.first.box__folder_id__c)
-    files = old_folder.files
-    files.each do |file|
-      @box_client.move_file(file, new_folder.folders.first)
-    end
-    old_folder_folders.each do |folder|
-      folder.files.each do |file|
-        @box_client.move_file(file, new_folder)
+    binding.pry
+    # create_folder_through_browser(sobject)
+    sleep 5 
+    if old_folder
+      @box_client.update_folder(old_folder, name: old_folder.name + '(backup)')
+      frups = query_frup(sobject, debug: true)
+      old_folder_folders = old_folder.folders
+      new_folder = @box_client.folder(frups.first.box__folder_id__c)
+      files = old_folder.files
+      files.each do |file|
+        @box_client.move_file(file, new_folder.folders.first)
       end
+      old_folder_folders.each do |folder|
+        folder.files.each do |file|
+          @box_client.move_file(file, new_folder)
+        end
+      end
+      @box_client.delete(old_folder)
     end
-    @box_client.delete(old_folder)
   rescue => e
     ap e.backtrace
     binding.pry
@@ -66,7 +74,6 @@ class CloudMigrator
     migrated_cloud_to_local_machine(opportunity)
     opportunity.cases.each do |sf_case|
       migrated_cloud_to_local_machine(sf_case)
-      folder = create_folder(sf_case)
       populate_local_box_attachments_for_sobject_and_path(sf_case, folder)
     end
   rescue =>e
@@ -113,7 +120,7 @@ class CloudMigrator
 
   def remove_unwanted_files_from_cache(sobject, folder)
     return if sobject.attachments.nil?
-    relevant_children(folder).each do |path|
+    folder.each_child.select{|e| e.file?}.each do |path|
       if !sobject.attachments.map(&:name).include?(path.basename.to_s)
         FileUtils.rm(path)
       end
@@ -123,7 +130,7 @@ class CloudMigrator
 
   def update_database(box_folder_files, path)
     box_file_sha1s = box_folder_files.map(&:sha1)
-    relevant_children(path).each do |file|
+    path.each_child.select{|e| e.file?}.each do |file|
       proposed_file = (path + file)
       begin
         file_sha1 = Digest::SHA1.hexdigest(file.read)
@@ -169,19 +176,27 @@ class CloudMigrator
   private
 
   def cases_from_finance_folders(finance_folders)
-    cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}/)}
+    cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}Finance/)}
     return cases if cases.empty?
     query = construct_cases_query(cases)
     @sf_client.custom_query(query: query)
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   def opps_from_finance_folder(finance_folders)
     opps = [finance_folders].flatten.select do |finance_folder|
-      !sf_name_from_ff_name(finance_folder).match(/^\d{8}/)
+      sf_name_from_ff_name(finance_folder)
     end
     return [] unless opps.present?
     query = construct_opps_query(opps)
     @sf_client.custom_query(query: query)
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   def opp_from_finance_folder(finance_folder)
@@ -340,16 +355,21 @@ class CloudMigrator
 
   def sync_folder_with_box(box_folder_files, local_folder_path)
     box_file_sha1s  = box_folder_files.map(&:sha1)
-    path_file_sha1s = relevant_children(local_folder_path).map{|f| Digest::SHA1.hexdigest(f.read)}
+    path_file_sha1s = local_folder_path.each_child.select{ |e| e.file? }.map{|f| Digest::SHA1.hexdigest(f.read)}
     box_folder_files.each do |box_file|
+      puts "box file: #{box_file.name}"
       download_from_box( box_file, local_folder_path ) unless path_file_sha1s.include? box_file.sha1
     end
-    relevant_children(local_folder_path).each do |file|
+    local_folder_path.each_child.select{|e| e.file? }.each do |file|
       file_sha1 = Digest::SHA1.hexdigest(file.read)
       if !box_file_sha1s.include?(file_sha1) || !box_folder_files.map(&:name).include?(file.basename.to_s)
         FileUtils.rm(file)
       end
     end
+  rescue => e
+    puts e
+    binding.pry
+    puts e
   end
 
   def download_from_box(file, path)
@@ -361,12 +381,6 @@ class CloudMigrator
       local_file.close
       @download += 1
       puts "Download number #{@download}"
-    end
-  end
-
-  def relevant_children(path)
-    path.each_child.select do |entity|
-      entity.file? && entity.basename.to_s != 'meta.yml' && entity.basename.to_s != '.DS_Store'
     end
   end
 
@@ -385,7 +399,7 @@ class CloudMigrator
 
   def construct_cases_query(groups)
     case_numbers = groups.map do |c|
-      sf_number_from_ff_name(c)
+      sf_case_number_from_ff_name(c)
     end
     query = <<-EOF
         SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
@@ -393,6 +407,17 @@ class CloudMigrator
         FROM case
         WHERE caseNumber in #{case_numbers.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
       EOF
+    query
+  end
+
+  def construct_case_query(id: nil)
+    fail 'need id to query case' unless id
+    query = <<-EOF
+      SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
+      (SELECT Id, Name FROM Attachments)
+      FROM case
+      WHERE id = '#{id}'
+    EOF
     query
   end
 
@@ -448,10 +473,12 @@ class CloudMigrator
       # TODO the below line should work but it didin't
       # sobject.update({'Create_Box_Folder__c': true})
       # create_folder_through_browser(sobject)
+      binding.pry
+      @browser_tool.visit_salesforce(sobject)
       puts 'sleeping until created'
       sleep 6
       kill_counter += 1
-      break if kill_counter > 1
+      break if kill_counter > 2
       sf_linked = query_frup(sobject)
     end
     if sf_linked
@@ -472,36 +499,32 @@ class CloudMigrator
     offensive_file.close
   end
 
-  def create_folder_through_browser(opp)
-    @browser_tool.create_folder(opp)
+  def create_folder_through_browser(sobject)
+    @browser_tool.create_folder(sobject)
   end
 
   def sf_name_from_ff_name(ff)
-    begin
-      match = ff.name.match(/(.+)\ -\ Finance$/) || ff.name.match(/(.+)\ -\ (\d+)Finance/)
-      puts ff.name
-      match[1]
-    rescue => e
-      ap e.backtrace
-      binding.pry
-    end
+    match = ff.name.match(/(?<opp_name>.+)\ -\ Finance$/) || ff.name.match(/(?<opp_name>.+)\ -\ (\d+)Finance/)
+    puts ff.name
+    match.try( :[], :opp_name )
+  rescue => e
+    ap e.backtrace
+    binding.pry
   end
 
-  def sf_number_from_ff_name(ff)
-    begin
-      match = ff.name.match(/(.+)\ -\ (\d+)Finance/) || ff.name.match(/^(\d{8,}) - Finance/)
-      if match[2]
-        match[2]
-      elsif match[1]
-        match[1]
-      else
-        binding.pry
-      end
-    rescue => e
-      ap e.backtrace
-      binding.pry
-    end
+  def sf_case_number_from_ff_name(ff)
+    match = ff.name.match(/(.+)\ -\ (?<case_number>\d+)Finance/) || ff.name.match(/^(?<case_number>\d{8,}) - Finance/)
+    match.try( :[], :case_number )
+  rescue => e
+    ap e.backtrace
+    binding.pry
   end
+  
+  def sf_id_from_ff_name(ff)
+    result = ff.name.match(/ - Finance - (?<id>(?:500|006)\w{15})/)
+    result.nil? ? nil : result[:id]
+  end
+
   def finance_folders(&block)
     @box_client.folder("7811715461").folders.select do |finance_folder|
       yield finance_folder if block_given? && finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/

@@ -2,7 +2,7 @@ require_relative 'console_potato'
 class CronJob
   attr_reader :cp
   def initialize
-    @cp = ConsolePotato.new(environment: :production)
+    @cm = CloudMigrator.new(environment: :production)
     @worker_pool = WorkerPool.instance
   end
 
@@ -19,7 +19,7 @@ class CronJob
   end
 
   def copy_todays_folder_to_tomorrow
-    cache_folder = @cp.dated_cache_folder
+    cache_folder = @cm.dated_cache_folder
     folder_to_copy = cache_folder.parent + Date.today.to_s
     day = 0
     until folder_to_copy.exist? do
@@ -33,11 +33,11 @@ class CronJob
   end
 
   def reconcile_box_and_salesforce
-    @cp.produce_snapshot_from_scratch
+    @cm.produce_snapshot_from_scratch
   end
 
   def reconcile_s_drive
-    @cp.sync_s_drive
+    @cm.sync_s_drive
   end
 
 end
@@ -45,11 +45,9 @@ end
 binding.pry
 w = WorkerPool.instance
 cj = CronJob.new
-# cj.reconcile_s_drive
-binding.pry
-# copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
+copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
+# copy_thread   = Thread.new { sleep 1 }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
-copy_thread   = Thread.new { sleep 1 }
 (60 * 60).downto(1) do |i|
   puts "allowing copy to get head start"
   sleep 1
@@ -59,8 +57,8 @@ copy_thread   = Thread.new { sleep 1 }
     break
   end
 end
-cj.reconcile_box_and_salesforce
 # cj.reconcile_s_drive
+cj.reconcile_box_and_salesforce
 copy_thread.priority = 3
 remove_thread.priority = 2
 count = w.tasks.size

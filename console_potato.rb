@@ -31,7 +31,7 @@ class ConsolePotato
   end
 
   def produce_single_snapshot_from_scratch(id)
-    opportunity = @sf_client.query(query: construct_opps_query(id: id))
+    opportunity = @sf_client.query(query: construct_opp_query(id: id))
     migrated_cloud_to_local_machine(opportunity)
     opportunity.cases.each do |sf_case|
       migrated_cloud_to_local_machine(sf_case)
@@ -154,19 +154,56 @@ class ConsolePotato
   private
 
   def cases_from_finance_folders(finance_folders)
-    cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}/)}
+    cases = [finance_folders].flatten.select do |f| 
+      f.name.match(/\d{8}/)
+      sf_id_from_ff_name(f) =~ /500/
+    end
     return cases if cases.empty?
-    query = construct_cases_query(cases)
-    @sf_client.custom_query(query: query)
+    name_query = construct_cases_name_query(cases)
+    id_query   = construct_cases_id_query(cases)
+    if name_query
+      name_results = @sf_client.custom_query(query: name_query)
+    else
+      name_results = []
+    end
+    if id_query
+      id_results   = @sf_client.custom_query(query: id_query)
+    else
+      id_results = []
+    end
+    id_results.each do |id_r|
+      name_results.push(id_r) unless name_results.map(&:id).include?(id_r.id)
+    end
+    name_results
   end
 
   def opps_from_finance_folder(finance_folders)
     opps = [finance_folders].flatten.select do |finance_folder|
-      !sf_name_from_ff_name(finance_folder).match(/^\d{8}/)
+      !sf_name_from_ff_name(finance_folder).try( :match, /^\d{8}/ )
+      sf_id_from_ff_name(finance_folder) =~ /006/
     end
     return [] unless opps.present?
-    query = construct_opps_query(opps)
-    @sf_client.custom_query(query: query)
+    name_query = construct_opps_name_query(opps)
+    id_query   = construct_opps_id_query(opps)
+    if name_query
+      name_results = @sf_client.custom_query(query: name_query)
+    else
+      name_results = []
+    end
+    if id_query
+      id_results   = @sf_client.custom_query(query: id_query)
+    else
+      id_results = []
+    end
+    id_results   = @sf_client.custom_query(query: id_query)
+    id_results.each do |id_r|
+      name_results.push(id_r) if name_results.size == 0 || name_results.map(&:id).include?(id_r.id)
+    end
+    name_results
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   def opp_from_finance_folder(finance_folder)
@@ -356,23 +393,62 @@ class ConsolePotato
     end
   end
 
-  def construct_opps_query(groups)
-    names = groups.map do |opp|
-      sf_name_from_ff_name(opp)
+  def construct_opps_name_query(group)
+    names = []
+    group.each do |opp|
+      name_match = sf_name_from_ff_name(opp)
+      names << name_match if name_match
     end
+    return nil if names.empty?
     <<-EOF
         SELECT Name, Id, createdDate,
         (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, opportunity__c FROM cases__r),
         (SELECT Id, Name FROM Attachments)
         FROM Opportunity
         WHERE Name in #{names.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
+    EOF
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
+  end
+
+  def construct_opps_id_query(group)
+    ids = []
+    group.each do |opp|
+      id_match  = sf_id_from_ff_name(opp)
+      ids << id_match if id_match
+    end
+    return nil if ids.empty?
+    <<-EOF
+        SELECT Name, Id, createdDate,
+        (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, subject, opportunity__c FROM cases__r),
+        (SELECT Id, Name FROM Attachments)
+        FROM Opportunity
+        WHERE Id in #{ids.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
       EOF
   end
 
-  def construct_cases_query(groups)
-    case_numbers = groups.map do |c|
-      sf_number_from_ff_name(c)
+  def construct_cases_id_query(group)
+    ids = []
+    group.each do |opp|
+      id_match  = sf_id_from_ff_name(opp)
+      ids << id_match if id_match
     end
+    return nil if case_ids.empty?
+    <<-EOF
+      SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
+      (SELECT Id, Name FROM Attachments)
+      FROM case
+      WHERE Id in #{case_ids.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
+    EOF
+  end
+
+  def construct_cases_name_query(group)
+    case_numbers = group.select do |c|
+      sf_case_number_from_ff_name(c)
+    end
+    return nil if case_numbers.empty?
     query = <<-EOF
         SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
         (SELECT Id, Name FROM Attachments)
@@ -457,40 +533,40 @@ class ConsolePotato
   end
 
   def sf_name_from_ff_name(ff)
-    begin
-      match = ff.name.match(/(.+)\ -\ Finance$/) || ff.name.match(/(.+)\ -\ (\d+)Finance/)
-      puts ff.name
-      match[1]
-    rescue => e
-      ap e.backtrace
-      binding.pry
-    end
+    match = ff.name.match(/(?<opp_name>.+)\ -\ Finance$/) || ff.name.match(/(?<opp_name>.+)\ -\ (\d+)Finance/)
+    puts ff.name
+    match.try( :[], :opp_name )
+  rescue => e
+    ap e.backtrace
+    binding.pry
   end
 
-  def sf_number_from_ff_name(ff)
-    begin
-      match = ff.name.match(/(.+)\ -\ (\d+)Finance/) || ff.name.match(/^(\d{8,}) - Finance/)
-      if match[2]
-        match[2]
-      elsif match[1]
-        match[1]
-      else
-        binding.pry
-      end
-    rescue => e
-      ap e.backtrace
-      binding.pry
-    end
+  def sf_case_number_from_ff_name(ff)
+    match = ff.name.match(/(.+)\ -\ (?<case_number>\d+)Finance/) || ff.name.match(/^(?<case_number>\d{8,}) - Finance/)
+    match.try( :[], :case_number )
+  rescue => e
+    ap e.backtrace
+    binding.pry
   end
+  
+  def sf_id_from_ff_name(ff)
+    result = ff.name.match(/ - Finance - (?<id>(?:500|006)\w{15})/)
+    result.nil? ? nil : result[:id]
+  end
+
   def finance_folders(&block)
     @box_client.folder("7811715461").folders.select do |finance_folder|
-      yield finance_folder if block_given? && finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/
+      yield finance_folder if block_given? && finance_folder.name !~ /^(Case Template|Salesforce \- ReedHein \(Sandbox\))$/
       finance_folder.name !~ /^(Case Finance Template|Opportunity Finance Template)$/
     end
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   def determine_cache_folder
-    if RbConfig::CONFIG['host_os'] =~ /darwin/ 
+    if RbConfig::CONFIG['host_os'] =~ /darwin/
       Pathname.new('/Users/voodoologic/Sandbox/dated_cache_folder') + Date.today.to_s 
     else 
       Pathname.new('/home/doug/Sandbox/dated_cache_folder' ) + Date.today.to_s

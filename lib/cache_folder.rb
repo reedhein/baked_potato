@@ -102,7 +102,6 @@ class CacheFolder
 
   def opportunity
     opp_path = @path.ascend.detect do |entity|
-      binding.pry unless entity.exist?
       entity.directory? && entity.basename.to_s =~ /^006/
     end
     binding.pry unless opp_path
@@ -146,6 +145,14 @@ class CacheFolder
     self.class.folder_type_by_id(id)
   end
 
+  def id
+    if type == :directory
+      path.basename.to_s
+    else
+      BPImage.new(self).id
+    end
+  end
+
   def self.folder_type_by_id(id)
     case id
     when /^(500|006)/
@@ -186,11 +193,11 @@ class CacheFolder
 
   def self.folder_by_id(id)
     dest_path   = DB::ImageProgressRecord.first(parent_id: id)
+    return dest_path.full_path.parent if dest_path
     dest_path ||= Find.find(path).with_index do |path,i|
       return Pathname.new(path) if Pathname.new(path).basename.to_s == id
       Find.prune if id.match(/^006/) && i != 0
     end
-    dest_path = dest_path.full_path.parent if dest_path.is_a? DB::ImageProgressRecord
   end
 
   def relevant_children(path)

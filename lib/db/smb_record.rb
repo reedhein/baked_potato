@@ -45,13 +45,10 @@ module DB
 
     def year
       return nil unless relative_path
-      _match = relative_path.split('/').first.match(/^(20\d{2})/)
-      if _match
-        _match[1]
-      else
-        relative_path.match(/^(20\d{2})/)
-      end
+      result_match = relative_path.match(/^\/(20\d{2})/)
+      result_match[1] if result_match
     end
+
     def self.local_path
       '/home/doug/Sandbox/s_drive'
     end
@@ -66,7 +63,7 @@ module DB
     private
 
     def self.get_relative_path(path)
-      path.to_s.gsub(local_path, '').gsub(network_path, '').gsub(cache_path, '')
+      path.to_s.gsub(cache_path, '').gsub(network_path, '').gsub(cache_path, '')
     end
   end
 

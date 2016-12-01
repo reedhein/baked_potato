@@ -8,12 +8,24 @@ require 'sass'
 require 'sass/plugin/rack'
 require 'omniauth-salesforce'
 require 'sinatra/partial'
+#TODO 
+# skinny stacked css
+# trash button fixed ✅
+# test refresh ✅
+# create source redirect login logic ✅
+# test moves
+# test move on UI
+# create parent folder logic
+# add scrub message
+# add user attribution
+
 Utils.environment = :sandbox
 class BakedPotato < Sinatra::Base
   set env: :development
   set port: 4545
   set :bind, '0.0.0.0'
   set :public_folder, 'public'
+  use Rack::Session::Cookie, :key => 'rack.session', :path => '/', :secret => 'your_secret', session_secret: 'supersecret'
   configure do
     register Sinatra::Partial
     set :salesforce_partial, :erb
@@ -40,17 +52,14 @@ class BakedPotato < Sinatra::Base
   FileUtils.ln_s( CacheFolder.smb_path, smb_path ) unless smb_path.exist? || smb_path.symlink?
 
   get '/' do
-    authenticate_me(DB::User.Doug)
-    if session[:salesforce].nil? || session[:box].nil? 
-      redirect '/login'
+    if session[:email].nil?
+      return_address = env['HTTP_HOST']
+      return_port    = env['SERVER_PORT']
+      escaped_address = URI.escape(return_address)
+      puts 'redirecting'
+      redirect "https://teamkatlas.com?return_address=#{escaped_address}&return_port=#{return_port}"
       return
     end
-    if session[:box][:email].split('@').last != 'reedhein.com'
-      session.clear
-      redirect '/login'
-      return
-    end
-    # @image          = BPImage.random_unlocked
     opp_id = CacheFolder.path.children.select{|e| e.directory?}.sample.basename.to_s
     redirect "/salesforce/#{opp_id}"
   end
@@ -60,7 +69,7 @@ class BakedPotato < Sinatra::Base
   end
 
   post '/frup_fixer' do 
-    cm = CloudMigrator.new
+    cm = CloudMigrator.new( user: DB::User.first(email: session[:email]) )
     cm.frup_fixer(params[:sobject_id])
     redirect "http://na34.salesforce.com/#{params[:id]}"
   end
@@ -73,14 +82,13 @@ class BakedPotato < Sinatra::Base
       box_auth_token:           params[:box_auth_token],
       box_refresh_token:        params[:box_refresh_token]
     )
-    session[:box] ||= {}
-    session[:box][:email] = user.email
-    session[:email] = user.email
+    self.session ||= {}
+    self.session[:email] = user.email
     redirect '/'
   end
 
   get '/refresh/:id' do
-    cm = CloudMigrator.new
+    cm = CloudMigrator.new(user: DB::User.first(email: session[:email]))
     cm.produce_single_snapshot_from_scratch(params[:id])
     return {finished: true}.to_json
   end
@@ -105,12 +113,16 @@ class BakedPotato < Sinatra::Base
   end
 
   get '/salesforce/:id' do 
-    if session.nil? || session[:box].nil? || session[:box][:email].nil?
+    if session[:email].nil?
       redirect 'https://teamkatlas.com/'
     end
     begin
       record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
-      if record.object_type == :opportunity
+      if record.nil?
+        CloudMigrator.new(user: DB::User.first(email: session[:email])).produce_single_snapshot_from_scratch(params[:id])
+        record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
+      end
+      if record.object_type == :opportunity || record.object_type.downcase == 'opportunity'
         @opportunity  = CacheFolder.find_from_record(record)
       else
         sf_case = CacheFolder.find_from_record(record)
@@ -172,7 +184,7 @@ class BakedPotato < Sinatra::Base
     when 'salesforcesandbox'
       save_salesforce_credentials('salesforcesandbox')
     when 'box'
-      creds  = Boxr::get_tokens(code=params[:code], client_id: CredService.creds.box.kitten_clicker.client_id, client_secret: CredService.creds.box.kitten_clicker.client_secret)
+      creds  = Boxr::get_tokens(params[:code], client_id: CredService.creds.box.kitten_clicker.client_id, client_secret: CredService.creds.box.kitten_clicker.client_secret)
       client = create_box_client_from_creds(creds)
       user   = populate_box_creds_to_db(client)
       session[:box]         = {}
@@ -186,7 +198,7 @@ class BakedPotato < Sinatra::Base
 
   post '/move_file' do
     begin
-      email = session[:box][:email]
+      email = session[:email]
       updated_record = Action::FileMove.new(email: email,
                           file_id: params[:file_id],
                           source_id: params[:source_id],
@@ -202,7 +214,8 @@ class BakedPotato < Sinatra::Base
 
   post '/delete_file' do 
     begin
-      email = session[:box][:email]
+      binding.pry
+      email = session[:email]
       Action::FileDelete.new(email: email, file_id: params[:file_id]).perform
       {status: 'success', file_id: params[:file_id]}.to_json
     rescue => e
@@ -213,6 +226,7 @@ class BakedPotato < Sinatra::Base
   end
   
   get '/salesforce/:id' do
+    binding.pry
     type = CacheFolder.folder_type_by_id(params[:id])
     if type == :opportunity
       @opportunity = CacheFolder.find_by_id(params[:id])
@@ -245,6 +259,10 @@ class BakedPotato < Sinatra::Base
   def get_full_path
     path_array = @image.path.parent.to_s.split('/')[5..-1] << @image.path.basename.to_s
     '/' + path_array.join('/')
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   helpers do
@@ -293,11 +311,12 @@ class BakedPotato < Sinatra::Base
       cm.produce_single_snapshot_from_scratch(params[:id])
     end
   end
+
   def search_s_drive_from_sting(string)
     search_terms = string.squish.scan(/\w+/)
     records = []
     search_terms.each do |term|
-      next if term.downcase == 'household' || term.downcase == 'and'
+      next if term.downcase == 'household' || term.downcase == 'and' || term.size <= 3
       results = DB::SMBRecord.all(:relative_path.like => "%#{term}%")
       records << results unless results.empty?
     end
@@ -306,7 +325,7 @@ class BakedPotato < Sinatra::Base
 
   def organize_records(records)
     result = {}
-    ['2012', '2013', '2014', '2015', '2016'].each do |date|
+    ['2012', '2013', '2014', '2015', '2016', '2017'].each do |date|
       result[date] = []
     end
     records.each do |r|
@@ -317,12 +336,6 @@ class BakedPotato < Sinatra::Base
   rescue => e
     puts e
     binding.pry
-  end
-
-  def find_sdrive_docs
-    name = @image.opportunity.meta.name.split(' ').first
-    search1 = DB::SMBRecord.all(:name.like => "%#{name}%")
-    search2 = DB::SMBRecord.all(:name.like => "%#{name.downcase}%")
   end
 
   def save_salesforce_credentials(callback)

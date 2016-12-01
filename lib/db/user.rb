@@ -24,7 +24,7 @@ module DB
     end
 
     def self.Doug
-      first_or_create
+      first(email: 'doug@reedhein.com')
     end
 
   end
