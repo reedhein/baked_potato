@@ -32,8 +32,6 @@ class BakedPotato < Sinatra::Base
   end
   use Rack::Session::Pool
   use OmniAuth::Builder do
-    # provider :salesforce, CredService.creds.salesforce.production.api_key, CredService.creds.salesforce.production.api_secret, provider_ignores_state: true
-    # provider OmniAuth::Strategies::SalesforceSandbox, CredService.creds.salesforce.sandbox.kitten_clicker.api_key, CredService.creds.salesforce.sandbox.kitten_clicker.api_secret, provider_ignores_state: true
     provider :salesforce,
       CredService.creds.salesforce.production.kitten_clicker_prod.api_key,
       CredService.creds.salesforce.production.kitten_clicker_prod.api_secret,
@@ -71,7 +69,7 @@ class BakedPotato < Sinatra::Base
   post '/frup_fixer' do 
     cm = CloudMigrator.new( user: DB::User.first(email: session[:email]) )
     cm.frup_fixer(params[:sobject_id])
-    redirect "http://na34.salesforce.com/#{params[:id]}"
+    redirect "http://na34.salesforce.com/salesforce/#{params[:sobect_id]}"
   end
 
   get '/authorize' do
@@ -141,6 +139,7 @@ class BakedPotato < Sinatra::Base
   end
 
   post '/authenticate/:provider' do
+    puts 'yippy'
     case params[:provider].downcase 
     when 'salesforce'
       auth_params = {
@@ -168,8 +167,8 @@ class BakedPotato < Sinatra::Base
   end
 
   post '/edit_file_name' do
-    email = session[:box][:email]
-    Action::FileRename.new(email: email, rename: params[:value], file_id: params[:pk]).peform
+    email = session[:email]
+    Action::FileRename.new(email: email, rename: params[:value], file_id: params[:pk], s_drive: params[:s_drive]).peform
   end
 
   get '/logout' do

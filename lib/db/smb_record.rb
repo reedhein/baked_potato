@@ -29,7 +29,7 @@ module DB
 
     def self.create_from_path(path)
       record = first_or_new(name: path.basename, relative_path: get_relative_path(path))
-      return if !record.new? && (record.date == Date.today.to_s || record.date == Date.yesterday)
+      return if !record.new? && record.date == Date.today.to_s
       if path.directory?
         record.type = :directory
       else

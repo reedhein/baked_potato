@@ -12,7 +12,8 @@ class BrowserTool
     @worker_pool = @wp = WorkerPool.instance
     number_of_browsers.times do |i|
       # self.instance_variable_set("@agent#{i}".to_sym, Watir::Browser.new(:chrome))
-      self.instance_variable_set("@agent#{i}".to_sym, Watir::Browser.new(:phantomjs))
+      browser = Watir::Browser.new(:phantomjs , :args => ['--ignore-ssl-errors=true','--ssl-protocol=any'])
+      self.instance_variable_set("@agent#{i}".to_sym, browser)
       agent = self.instance_variable_get("@agent#{i}".to_sym)
       @agents << agent
       agent.driver.manage.timeouts.implicit_wait = 30
@@ -22,6 +23,10 @@ class BrowserTool
       # setup_in_quadrant(agent, i)
       log_in_to_salesforce(agent)
     end
+  rescue => e
+    ap e.backtrace[0..5]
+    binding.pry
+    puts e
   end
 
   def close
@@ -34,8 +39,41 @@ class BrowserTool
     agent.unlock
   end
 
-  def visit_salesforce(sobject)
+  def authenticate
+    queue_work do |agent|
+      agent.screenshot.save('initial.png')
+      agent.goto 'http://localhost:4545'
+      # agent.form(id: 'authenticate_salesforce_form').submit
+      begin
+        link = agent.link(id: 'hack')
+        puts link.exist?
+        link.click
+      rescue
+        binding.pry
+      end
+      agent.screenshot.save('salesforce.png')
+      binding.pry
+      agent.text_field(id: 'username').set CredService.creds.user.salesforce.production.username
+      agent.text_field(id: 'password').set CredService.creds.user.salesforce.production.username
+      agent.screenshot.save('salesforce_before_login.png')
+      agent.button(name: 'Login').click
+      agent.screenshot.save('salesforce_after_login.png')
+      agent.form(id: 'authenticate_box_form').submit
+      agent.screenshot.save('box.png')
+      agent.text_field(name: 'login').when_present.set  CredService.creds.user.box.username
+      agent.text_field(name: 'password').set CredService.creds.user.box.password
+      agent.screenshot.save('box_pre_login.png')
+      agent.button(id: 'concent_accept_buttong').click
+      agent.screenshot.save('box_post_login.png')
+      binding.pry
+    end
+  rescue => e
+    puts e
     binding.pry
+    puts e
+  end
+
+  def visit_salesforce(sobject)
     puts sobject_url(sobject)
     queue_work do |agent|
       agent.goto sobject_url(sobject)
@@ -95,7 +133,6 @@ class BrowserTool
   end
 
   def log_in_to_salesforce(agent)
-    binding.pry
     agent.goto(@sf_login)
     agent.text_field(id: 'username').set @sf_username
     agent.text_field(id: 'password').set @sf_password

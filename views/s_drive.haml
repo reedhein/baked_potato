@@ -65,11 +65,22 @@
       $('.preview-window').fadeIn();
       $.getJSON('/s_drive/file/' + $(this).data('sha1'), function(data){
         whoot = $('.file-data .image-name a').attr('href', data.id).text(data.name)
+        local_file_data = "<h5 class='inline-editable image-name'><b>Name: </b><a class='editable editable-click' data-id='" + data.id + "'>" + data.name + "</h5></a>"
+        $('h5.inline-editable.image-name').remove()
         danger = $('.file-data .btn-danger').attr('id', data.id)
         $('.file-data .btn-danger').remove()
         $('.file-data .image-name').append(whoot)
+        $('.file-data').prepend(local_file_data)
         $('.file-data').prepend(danger)
         $('.file-data .image-location .cloud_path').text(data.relative_path.split('/').slice(0,-1).join('/'))
+        $('.file-data a').editable(
+          {
+            type: 'text',
+            name: 'file_name',
+            pk: function(){console.log($(this).data('id')); return $(this).data('id')},
+            params: {email: $('#user_email').data('email'), s_drive: true},
+            url: '/edit_file_name'
+        });
       })
     })
   })

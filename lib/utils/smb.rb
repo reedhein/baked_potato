@@ -27,6 +27,10 @@ class SMB
       puts i if i % 10000 == 0
       improved_process_path_entity(entity)
     end
+    DB::SMBRecord.all(:date.not => Date.today.to_s).destroy
+  rescue => e
+    puts e
+    binding.pry
   end
 
   def improved_process_path_entity(entity)

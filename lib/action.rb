@@ -1,10 +1,11 @@
 class Action
-  attr_accessor :email, :source_id, :destination_id, :rename, :file_id, :box_client, :sf_client
-  def initialize(email: nil, source_id: nil, destination_id: nil, rename: nil, file_id: nil)
+  attr_accessor :email, :source_id, :destination_id, :rename, :file_id, :box_client, :sf_client, :s_drive
+  def initialize(email: nil, source_id: nil, destination_id: nil, rename: nil, file_id: nil, s_drive: false)
     @email          = email
     @user           = DB::User.first(email: @email)
     @source_id      = source_id
     @destination_id = destination_id
+    @s_drive        = s_drive
     @rename         = rename
     @file_id        = file_id
     @record         = get_record 

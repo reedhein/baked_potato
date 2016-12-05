@@ -8,9 +8,11 @@ class CronJob
 
   def remove_old_cache_folder
     cache_folder = cp.dated_cache_folder
-    if cache_folder.parent.each_child.count > 7
-      cache_folder.parent.each_child do |entity|
-        @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) } if !entity.file? && Date.parse(entity.basename) < (Date.today - 3.days)
+    return unless cache_folder.parent.each_child.count > 7
+    cache_folder.parent.each_child do |entity|
+      if entity.directory? && Date.parse(entity.basename) < (Date.today - 7.days)
+        binding.pry
+        @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) }
       end
     end
     remove_date = (Date.today - 3.days).to_s
@@ -26,39 +28,43 @@ class CronJob
       day += 1
       folder_to_copy = cache_folder.parent + (Date.today - day.day).to_s
     end
-    destination_folder = (cache_folder.parent + Date.tomorrow)
-    system_call = "rsync -r #{folder_to_copy.to_s}/ #{destination_folder.to_s}"
+    destination_folder = (cache_folder.parent + Date.tomorrow.to_s)
+    system_call = "rsync -r --ignore-existing #{folder_to_copy.to_s}/ #{destination_folder.to_s}"
     puts system_call
     `#{system_call}`
   end
 
   def reconcile_box_and_salesforce
+    # @cm.browser_tool.authenticate
     @cm.produce_snapshot_from_scratch
+  rescue Restforce::UnauthorizedError => e
+    ap e.backtrace
+    binding.pry
   end
 
   def reconcile_s_drive
     @cm.sync_s_drive
   end
-
 end
 
-binding.pry
 w = WorkerPool.instance
 cj = CronJob.new
 copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
-# copy_thread   = Thread.new { sleep 1 }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
 (60 * 60).downto(1) do |i|
   puts "allowing copy to get head start"
-  sleep 1
   puts "time left: #{i}"
+  sleep 1
+  system('clear')
   if copy_thread.status == false || copy_thread.status.nil?
     puts "copy finished"
     break
   end
 end
-# cj.reconcile_s_drive
 cj.reconcile_box_and_salesforce
+rsync_s_drive = 'rsync -rvz --progress --ignore-existing --delete-after --size-only ~/Sandbox/s_drive/Client\ Management/REED\ HEIN\ and\ ASSOCIATES/_Timeshare\ Exits/ /home/doug/Sandbox/s_drive_exits_backup'
+`#{rsync_s_drive}`
+cj.reconcile_s_drive
 copy_thread.priority = 3
 remove_thread.priority = 2
 count = w.tasks.size

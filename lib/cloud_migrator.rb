@@ -10,7 +10,7 @@ ActiveSupport::TimeZone[-8]
 class CloudMigrator
   attr_reader :browser_tool, :dated_cache_folder
   def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil, user: nil)
-    Utils.environment     = @environment = environment
+    Utils.environment     = @environment = environment.to_sym
     @user                 = user
     @id                   = id
     @sf_client            = Utils::SalesForce::Client.new(@user || DB::User.Doug)
@@ -182,7 +182,11 @@ class CloudMigrator
     @sf_client.custom_query(query: query)
   rescue => e
     ap e.backtrace[0..5]
-    binding.pry
+    if Utils.environment == :production
+      raise e
+    else
+      binding.pry
+    end
     puts e
   end
 
@@ -266,6 +270,7 @@ class CloudMigrator
           end
           puts "\n"
           sf_attachment = @sf_client.custom_query(query: "SELECT id, body FROM Attachment where id = '#{a.id}'").first
+          next unless sf_attachment #deleted
           ipr = DB::ImageProgressRecord.find_from_path(relative_path)
           ipr.file_id = sf_attachment.id if ipr.file_id.nil?
           file_body   = sf_attachment.api_object.Body
@@ -357,7 +362,6 @@ class CloudMigrator
     box_file_sha1s  = box_folder_files.map(&:sha1)
     path_file_sha1s = local_folder_path.each_child.select{ |e| e.file? }.map{|f| Digest::SHA1.hexdigest(f.read)}
     box_folder_files.each do |box_file|
-      puts "box file: #{box_file.name}"
       download_from_box( box_file, local_folder_path ) unless path_file_sha1s.include? box_file.sha1
     end
     local_folder_path.each_child.select{|e| e.file? }.each do |file|
@@ -473,7 +477,6 @@ class CloudMigrator
       # TODO the below line should work but it didin't
       # sobject.update({'Create_Box_Folder__c': true})
       # create_folder_through_browser(sobject)
-      binding.pry
       @browser_tool.visit_salesforce(sobject)
       puts 'sleeping until created'
       sleep 6

@@ -21,12 +21,14 @@
         %button.btn-success#kittyButton
           😺
       %li.nav-item
-        %a.nav-link{href: '#'}
+        %a.nav-link{href: '/'}
           Home
       -if session[:email]
         %li.nav-item
           %p{id: 'user_email', data: { email: session[:email] } }
-            "logged in as #{session[:email]}
+            logged in as #{session[:email]}
+        %a.nav-link{href: "/logout"}
+          Log out
       -else
         %li.nav-item
           %a.nav-link{href: "http://teamkatlas.com/?#{env.location}"}
@@ -166,7 +168,7 @@
                   type: 'text',
                   name: 'file_name',
                   pk: function(){console.log($(this).data('id')); return $(this).data('id')},
-                  params: {email: $('#user_email').data('email')},
+                  params: {email: $('#user_email').data('email'), s_drive: false},
                   url: '/edit_file_name'
               });
             }
