@@ -13,9 +13,9 @@ GEM
   remote: https://rubygems.org/
   specs:
     Ascii85 (1.0.2)
-    activemodel (5.0.0.1)
-      activesupport (= 5.0.0.1)
-    activesupport (5.0.0.1)
+    activemodel (5.0.1)
+      activesupport (= 5.0.1)
+    activesupport (5.0.1)
       concurrent-ruby (~> 1.0, >= 1.0.2)
       i18n (~> 0.7)
       minitest (~> 5.1)
@@ -44,7 +44,7 @@ GEM
     coderay (1.1.1)
     combine_pdf (0.2.32)
       ruby-rc4 (>= 0.1.5)
-    concurrent-ruby (1.0.2)
+    concurrent-ruby (1.0.3)
     connection_pool (2.2.1)
     cookiejar (0.3.3)
     daemons (1.2.4)
@@ -151,7 +151,7 @@ GEM
     http_parser.rb (0.6.0)
     httparty (0.14.0)
       multi_xml (>= 0.5.2)
-    httpclient (2.8.2.4)
+    httpclient (2.8.3)
     i18n (0.7.0)
     iso-639 (0.2.8)
     json (1.8.3)
@@ -178,9 +178,9 @@ GEM
     mime-types-data (3.2016.0521)
     mimemagic (0.3.2)
     mini_portile2 (2.1.0)
-    minitest (5.10.0)
+    minitest (5.10.1)
     multi_json (1.12.1)
-    multi_xml (0.5.5)
+    multi_xml (0.6.0)
     multipart-post (2.0.0)
     net-http-digest_auth (1.4)
     net-http-persistent (2.9.4)
@@ -214,7 +214,7 @@ GEM
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
       slop (~> 3.4)
-    pry-byebug (3.4.1)
+    pry-byebug (3.4.2)
       byebug (~> 9.0)
       pry (~> 0.10)
     public_suffix (2.0.4)
@@ -231,7 +231,7 @@ GEM
     refining (0.0.5.5)
     rerun (0.11.0)
       listen (~> 3.0)
-    restforce (2.4.2)
+    restforce (2.5.0)
       faraday (~> 0.9.0)
       faraday_middleware (>= 0.8.8)
       hashie (>= 1.2.0, < 4.0)
@@ -245,9 +245,10 @@ GEM
     ruby-rc4 (0.1.5)
     ruby_dep (1.5.0)
     rubyzip (1.2.0)
+    salesforce_id (1.4.6)
     sambal (0.1.7)
-    sass (3.4.22)
-    selenium-webdriver (3.0.3)
+    sass (3.4.23)
+    selenium-webdriver (3.0.4)
       childprocess (~> 0.5)
       rubyzip (~> 1.0)
       websocket (~> 1.0)
@@ -294,7 +295,7 @@ GEM
     uuid (2.3.8)
       macaddr (~> 1.0)
     uuidtools (2.1.5)
-    watir (6.0.2)
+    watir (6.0.3)
       selenium-webdriver (~> 3.0)
     watir-scroll (0.3.0)
       watir (>= 6.0)
@@ -332,6 +333,7 @@ DEPENDENCIES
   restforce
   ruby-growl
   rubyzoho!
+  salesforce_id
   sambal
   sass
   sidekiq
