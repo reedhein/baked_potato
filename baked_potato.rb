@@ -8,6 +8,7 @@ require 'sass'
 require 'sass/plugin/rack'
 require 'omniauth-salesforce'
 require 'sinatra/partial'
+require 'salesforce_id'
 #TODO 
 # skinny stacked css
 # trash button fixed ✅
@@ -54,7 +55,7 @@ class BakedPotato < Sinatra::Base
       return_address = env['HTTP_HOST']
       return_port    = env['SERVER_PORT']
       escaped_address = URI.escape(return_address)
-      puts 'redirecting'
+      puts "redirecting with return to #{return_address}"
       redirect "https://teamkatlas.com?return_address=#{escaped_address}&return_port=#{return_port}"
       return
     end
@@ -62,13 +63,33 @@ class BakedPotato < Sinatra::Base
     redirect "/salesforce/#{opp_id}"
   end
 
+  get '/case_number' do 
+    begin
+      record =  DB::SalesForceProgressRecord.first(casenumber: params[:case_number])
+      cm = CloudMigrator.new(user: DB::User.first(email: session[:email]), browsers: 1)
+      sf_case = cm.produce_snapshot_from_case_number(params[:case_number])
+      @opportunity = sf_case.opportunity
+      redirect "/salesforce/#{@opportunity.id}"
+    rescue Restforce::UnauthorizedError
+      redirect 'https://teamkatlas.com/unauthenticate'
+    rescue => e
+      ap e.backtrace
+      binding.pry
+    end
+  end
+
+  get '/s_drive' do
+    records = search_s_drive_from_sting(params[:terms])
+    organize_records(records).to_json
+  end
+
   get '/frup_fixer' do
     haml :frup_fixer
   end
 
   post '/frup_fixer' do 
-    cm = CloudMigrator.new( user: DB::User.first(email: session[:email]) )
-    cm.frup_fixer(params[:sobject_id])
+    ff = Utils::Box::FrupFixer.new( sf_id: params[:id], user: DB::User.first(email: session[:email]) )
+    ff.repair_box
     redirect "http://na34.salesforce.com/salesforce/#{params[:sobect_id]}"
   end
 
@@ -86,19 +107,14 @@ class BakedPotato < Sinatra::Base
   end
 
   get '/refresh/:id' do
-    cm = CloudMigrator.new(user: DB::User.first(email: session[:email]))
+    cm = CloudMigrator.new(user: DB::User.first(email: session[:email]), browsers: 1)
     cm.produce_single_snapshot_from_scratch(params[:id])
-    return {finished: true}.to_json
+    {finished: true}.to_json
   end
 
   get '/s_drive/file/:sha1' do
     record = DB::SMBRecord.first(sha1: params['sha1'])
     return record.to_json
-  end
-
-  get '/s_drive/:terms' do
-    records = search_s_drive_from_sting(params[:terms])
-    organize_records(records).to_json
   end
 
   get '/login' do
@@ -115,12 +131,22 @@ class BakedPotato < Sinatra::Base
       redirect 'https://teamkatlas.com/'
     end
     begin
-      record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
-      if record.nil?
-        CloudMigrator.new(user: DB::User.first(email: session[:email])).produce_single_snapshot_from_scratch(params[:id])
-        record = DB::SalesForceProgressRecord.first(sales_force_id: params[:id])
+      if SalesforceId.sensitive?(params[:id])
+        id = SalesforceId.to_insensitive(params[:id])
+      else
+        id = params[:id]
       end
-      if record.object_type == :opportunity || record.object_type.downcase == 'opportunity'
+      puts id
+      record = DB::SalesForceProgressRecord.first(sales_force_id: id)
+      if record.nil? || CacheFolder.find_from_record(record).nil?
+        CloudMigrator.new(user: DB::User.first(email: session[:email])).produce_single_snapshot_from_scratch(params[:id])
+        record = DB::SalesForceProgressRecord.first(sales_force_id: id)
+      end
+      if record.object_type.downcase.to_sym == :opportunity
+        @opportunity  = CacheFolder.find_from_record(record)
+        if @opportunity.nil?
+          CloudMigrator.new(user: DB::User.first(email: session[:email])).produce_single_snapshot_from_scratch(params[:id])
+        end
         @opportunity  = CacheFolder.find_from_record(record)
       else
         sf_case = CacheFolder.find_from_record(record)
@@ -224,15 +250,11 @@ class BakedPotato < Sinatra::Base
     end
   end
   
-  get '/salesforce/:id' do
-    binding.pry
-    type = CacheFolder.folder_type_by_id(params[:id])
-    if type == :opportunity
-      @opportunity = CacheFolder.find_by_id(params[:id])
-    elsif type == :case
-      @case = CacheFolder.find_by_id(params[:id])
-    end
-    @cases = @opportunity.cases
+  get '/create_box_folder' do 
+    user = DB::User.first(email: session[:email])
+    binding.pry unless params[:sf_id]
+    ff = Utils::Box::FrupFixer.new( user: user , sf_id: params[:sf_id])
+    ff.repair_box
   end
 
   get '/file/:id' do
@@ -302,11 +324,12 @@ class BakedPotato < Sinatra::Base
   private
 
   def audit_opportunity
-    if @opportunity.meta[:name].blank? ||
-        @opportunity.cases.detect{ |c| c.meta[:name].nil? && c.meta[:subject].nil? } ||
-          @opportunity.box_folders.detect{ |bf| bf.meta.nil? || bf.meta[:name].nil? }
+    if @opportunity.path.nil? ||
+        @opportunity.meta[:name].blank? ||
+          @opportunity.cases.detect{ |c| c.meta[:name].nil? && c.meta[:subject].nil? } ||
+            @opportunity.box_folders.detect{ |bf| bf.meta.nil? || bf.meta[:name].nil? }
       puts 'need to spot check'
-      cm = CloudMigrator.new
+      cm = CloudMigrator.new(id: params[:id], user: DB::User.first(email: session[:email]), browsers: 1)
       cm.produce_single_snapshot_from_scratch(params[:id])
     end
   end
