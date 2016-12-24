@@ -17,7 +17,7 @@ class BrowserTool
       agent = self.instance_variable_get("@agent#{i}".to_sym)
       @agents << agent
       agent.driver.manage.timeouts.implicit_wait = 30
-      agent.driver.manage.timeouts.page_load = 30
+      agent.driver.manage.timeouts.page_load     = 30
       # @screen_width  ||= agent.execute_script('return screen.width;')
       # @screen_height ||= agent.execute_script('return screen.height;')
       # setup_in_quadrant(agent, i)
@@ -25,7 +25,7 @@ class BrowserTool
     end
   rescue => e
     ap e.backtrace[0..5]
-    binding.pry
+    binding.pry 
     puts e
   end
 
@@ -48,7 +48,7 @@ class BrowserTool
         link = agent.link(id: 'hack')
         puts link.exist?
         link.click
-      rescue
+      rescue 
         binding.pry
       end
       agent.screenshot.save('salesforce.png')
@@ -77,6 +77,18 @@ class BrowserTool
     puts sobject_url(sobject)
     queue_work do |agent|
       agent.goto sobject_url(sobject)
+      frames = agent.iframes
+      kill_counter = 0
+      until frames[3].when_present?
+        sleep 1 
+        kilL_counter += 1
+        puts "waiting for iframe to be present to set teh link"
+        puts "kill counter #{kill_counter} of 5"
+        if kill_counter >= 5
+          agent.screenshot.save('fail.png')
+          break
+        end
+      end
     end
   end
 
