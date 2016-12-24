@@ -25,17 +25,23 @@
           Home
       -if session[:email]
         %li.nav-item
-          %p{id: 'user_email', data: { email: session[:email] } }
-            logged in as #{session[:email]}
-        %a.nav-link{href: "/logout"}
-          Log out
+          %a.nav-link{href: "/logout"}
+            Log out
       -else
         %li.nav-item
           %a.nav-link{href: "http://teamkatlas.com/?#{env.location}"}
             Login
       %li.nav-item
         %button.btn.btn-primary.btn-lg.refresh_page_data{"data-target" => "#myModal", "data-toggle" => "modal", :type => "button"}
-          Refresh
+          Refresh the data
+      -if session[:email]
+        %p{id: 'user_email', data: { email: session[:email] },style: 'float: right; color: white'}
+          #{session[:email]}
+      %li.nav-item
+        %form{ action: '/case_number', method: "GET"}
+          %input{name: :case_number, value: 'enter a case number'}
+          %input{type: 'submit', value: 'Go to case number'}
+
 
   = partial(:_refresh_modal)
 

@@ -19,7 +19,7 @@
       - sf_case.box_folders.each do |box_folder|
         .clearfix
           %button.btn.action{style: 'margin-top: 1em', data: {id: box_folder.id}}
-            move to: #{box_folder.meta[:name]}
+            move to: #{box_folder.meta[:name] || box_folder.case_number + ' parent folder'}
       .clearfix
       %button.btn.action{style: 'margin-top: 1em'}
         Add scrubbed chatter message
@@ -42,6 +42,9 @@
     %a{href: "http://na34.salesforce.com/#{sf_case.id}", target: '_blank'}
       %button.btn-warning
         Go to original
+  - if sf_case.box_folders.empty?
+    %button.btn.createBoxFolders{style: 'float: right', data: {case_id: sf_case.id}}
+      create box folders
 
 :javascript
   $(document).ready(function() {
@@ -52,6 +55,16 @@
       $('.nav-pane.' + id.substring(1,13) ).hide()
       console.log('substring: ', '.nav-pane.' + id.substring(1,13))
       $('.nav-pane' + id).show()
+    });
+    $('.card.col-xl-3').on('click', '.createBoxFolders', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      $.getJSON({
+        url: '/create_box_folder',
+        data: {sf_id: $(this).data('caseId')},
+        success: alert('created'),
+        timeout: 1000*60*1
+      })
     })
   })
 

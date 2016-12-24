@@ -1,5 +1,7 @@
 %h3
-  = folder.meta[:name]
+  = folder.meta[:name] || folder.case_number + ' parent folder'
+%a{href: 'https://reedhein.app.box.com/files/0/f/' + folder.id}
+  %i.fa.fa-external-link
 %li.list-group-item{id: folder.id}
   %fieldset
     %ul.list-group{style: 'list-style-type: none', class: 'droppable'}
