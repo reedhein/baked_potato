@@ -8,15 +8,16 @@ require 'watir'
 ActiveSupport::TimeZone[-8]
 
 class CloudMigrator
-  attr_reader :browser_tool, :dated_cache_folder
-  def initialize(environment: 'production', offset_count: 0, project: 'box_population', id: nil, user: nil)
+  attr_reader :browser_tool, :dated_cache_folder, :sf_client, :worker_pool
+  attr_accessor :box_client
+  def initialize(environment: :production, project: 'box_population', id: nil, user: nil, browsers: 2)
     Utils.environment     = @environment = environment.to_sym
     @user                 = user
     @id                   = id
-    @sf_client            = Utils::SalesForce::Client.new(@user || DB::User.Doug)
+    @sf_client            = Utils::SalesForce::Client.new(@user || DB::User.Doug, debug: true)
     @box_client           = Utils::Box::Client.new(@user || DB::User.Doug)
     @worker_pool          = WorkerPool.instance
-    @browser_tool         = BrowserTool.new(2)
+    @browser_tool         = BrowserTool.new(browsers) if browsers > 0
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
     @dated_cache_folder   = determine_cache_folder
@@ -29,46 +30,30 @@ class CloudMigrator
     @offset_count         = @meta.offset_counter
   end
 
-  def frup_fixer(id)
-    if id =~ /^500/
-      query = construct_case_query(id: id)
-    else
-      query = construct_opp_query(id: id)
-    end
-    sobject = @sf_client.custom_query(query: query).first
-    frups   = query_frup(sobject, debug: true)
-    old_folder  = @box_client.folder(frups.first.box__folder_id__c) 
-    frups.each do |frup|
-      frup.delete
-    end
-    # sobject.update({'Create_Box_Folder__c': true})
-    binding.pry
-    # create_folder_through_browser(sobject)
-    sleep 5 
-    if old_folder
-      @box_client.update_folder(old_folder, name: old_folder.name + '(backup)')
-      frups = query_frup(sobject, debug: true)
-      old_folder_folders = old_folder.folders
-      new_folder = @box_client.folder(frups.first.box__folder_id__c)
-      files = old_folder.files
-      files.each do |file|
-        @box_client.move_file(file, new_folder.folders.first)
-      end
-      old_folder_folders.each do |folder|
-        folder.files.each do |file|
-          @box_client.move_file(file, new_folder)
-        end
-      end
-      @box_client.delete(old_folder)
-    end
-  rescue => e
-    ap e.backtrace
-    binding.pry
-    puts 'YUGE'
+  def pull_down_docs
+    query       = construct_opp_query(id: 'testid')
+    opportunity = @sf_client.custom_query(query: query)
+    opportunity.box_folder
   end
 
   def produce_single_snapshot_from_scratch(id)
-    opportunity = @sf_client.custom_query(query: construct_opp_query(id: id)).first
+    if id.match(/^500/)
+      s_object = @sf_client.custom_query(query: construct_case_query(id: id)).first
+      opp_snapshot_from_scratch(s_object.opportunity)
+    else
+      s_object = @sf_client.custom_query(query: construct_opp_query(id: id)).first
+      opp_snapshot_from_scratch(s_object)
+    end
+  end
+
+  def produce_snapshot_from_case_number(case_number)
+    sf_case = @sf_client.custom_query(query: construct_case_query_from_case_number(case_number)).first
+    opp_snapshot_from_scratch(sf_case.opportunity)
+    puts sf_case
+    sf_case
+  end
+
+  def opp_snapshot_from_scratch(opportunity)
     folder = create_folder(opportunity)
     populate_local_box_attachments_for_sobject_and_path(opportunity, folder)
     migrated_cloud_to_local_machine(opportunity)
@@ -86,9 +71,6 @@ class CloudMigrator
     finance_folders.shuffle.each_slice(15).each do |finance_folders|
       cases = cases_from_finance_folders(finance_folders)
       opportunities = opps_from_finance_folder(finance_folders)
-      opportunities.delete_if do |opp|
-        %w(006610000066wSZAAY 006610000068R7qAAE 00661000008PuHQAA0  00661000005RPAjAAO 006610000068JjuAAE 006610000066jcyAAA).include? opp.id
-      end
       opportunities.each do |opportunity|
         @worker_pool.tasks.push Proc.new { migrated_cloud_to_local_machine(opportunity) }
         opportunity.cases.each do |sf_case|
@@ -173,7 +155,17 @@ class CloudMigrator
     end
   end
 
+  def construct_case_query_from_case_number(case_number)
+    <<-EOF
+        SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
+        (SELECT Id, Name FROM Attachments)
+        FROM case
+        WHERE caseNumber = '#{case_number}'
+    EOF
+  end
+
   private
+
 
   def cases_from_finance_folders(finance_folders)
     cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}Finance/)}
@@ -308,31 +300,6 @@ class CloudMigrator
     end
   end
 
-  def add_sf_attachments_to_folder(object)
-    case object
-    when Pathname
-      opp = salesforce_object_from_id_folder(object)
-      binding.pry unless opp
-      add_attachments_to_path(opp,folder)
-    when Utils::SalesForce::Opportunity, Utils::SalesForce::Case
-      add_attachments_to_path(object, folder)
-    else
-      binding.pry
-      fail
-    end
-  end
-
-  def salesforce_object_from_id_folder(folder)
-    id = folder.split.last.to_s
-    type = id[0] == 5 ? 'Case' : 'Opportunity'
-    query = <<-EOF
-      SELECT id, name,
-      (SELECT id, Name FROM Attachments)
-      FROM #{type}
-      WHERE id = '#{id}'
-    EOF
-    @sf_client.custom_query(query: query).first
-  end
 
   def visit_page_of_corresponding_id(id)
     # @browser_tool.queue_work do |agent|
@@ -388,8 +355,8 @@ class CloudMigrator
     end
   end
 
-  def construct_opps_query(groups)
-    names = groups.map do |opp|
+  def construct_opps_query(opp_box_folder_names)
+    names = opp_box_folder_names.map do |opp|
       sf_name_from_ff_name(opp)
     end
     <<-EOF
@@ -398,7 +365,7 @@ class CloudMigrator
         (SELECT Id, Name FROM Attachments)
         FROM Opportunity
         WHERE Name in #{names.to_s.gsub('[','(').gsub(']',')').gsub("'", %q(\\\')).gsub('"', "'")}
-      EOF
+    EOF
   end
 
   def construct_cases_query(groups)
@@ -458,15 +425,10 @@ class CloudMigrator
 
   def query_frup(sobject, debug: false)
     db = Utils::SalesForce::BoxFrupC.find_db_by_id(sobject.id)
-    if db.present? && db.box__folder_id__c.present? && debug == false
+    if db.present? && db.box__folder_id__c.present? && db.created_date && DateTime.parse(db.created_date) < ( DateTime.today - 3.days )
       db
     else
-      frups = @sf_client.custom_query(query:"SELECT id, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}'")
-      if debug
-        frups
-      else
-        frups.first
-      end
+      @sf_client.custom_query(query:"SELECT id, createddate, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{sobject.id}' LIMIT 1")
     end
   end
 
@@ -485,11 +447,15 @@ class CloudMigrator
       sf_linked = query_frup(sobject)
     end
     if sf_linked
-      sf_linked
+      sf_linked.first
     else
       document_offesive_object(sobject) 
       nil
     end
+  rescue => e
+    ap e.backtrace
+    binding.pry
+    puts 'pull_for_frup'
   end
 
   def document_offesive_object(sobject)

@@ -2,7 +2,7 @@ class CacheFolder
 
   attr_reader :path, :id, :file_id
   def initialize(path)
-    binding.pry if path.nil?
+    return nil if path.nil?
     @path           = Pathname.new(path)
     @cache_folder   = self.class.path
     @type           = determine_file_or_directory
@@ -32,7 +32,6 @@ class CacheFolder
       id = record.box_id
     end
     path = folder_by_id(id)
-    binding.pry unless path
     CacheFolder.new(path)
   end
 
@@ -58,6 +57,10 @@ class CacheFolder
 
   def meta
     @meta ||= determin_meta
+  end
+
+  def case_number
+    meta[:casenumber]
   end
 
   def name
@@ -127,11 +130,15 @@ class CacheFolder
       box_folder = @path.parent.children.detect{|c| c.directory? && c.basename.to_s =~ /\d{10,}/}
     end
     if box_folder
-      CacheFolder.new(box_folder).folders
+      box_folders = []
+      box_folders << CacheFolder.new(box_folder)
+      CacheFolder.new(box_folder).folders.each{ |f| box_folders << f }
+      box_folders
     else
       []
     end
   rescue => e
+    puts e
     binding.pry
   end
 
