@@ -24,13 +24,21 @@ module Utils
         folder("5665821837")
       end
 
+      def case_template
+        folder('7230140085')
+      end
+
+      def opp_template
+        folder('7324593617')
+      end
+
       def self.client(user = DB::User.Doug)
         token_refesh_callback = lambda do |access, refresh, identifier|
           user.box_access_token  = access
           user.box_refresh_token = refresh
           user.box_identifier    = identifier
           user.save
-          puts "Box Token updated: #{Time.now.to_s}"
+          puts "Box Token updated: #{Time.now.to_s} for #{user.email}"
         end
         token = user.box_access_token || CredService.creds.box.utility_app.token
         ::Boxr::Client.new(token,
@@ -55,7 +63,7 @@ module Utils
               else
                 return_value
               end
-            rescue HTTPClient::ConnectTimeoutError => e
+            rescue HTTPClient::ConnectTimeoutError, HTTPClient::ReceiveTimeoutError=> e
               ap e.backtrace
               puts "execution expired"
               sleep 0.5

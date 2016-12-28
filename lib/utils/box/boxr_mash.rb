@@ -25,6 +25,14 @@ class BoxrMash
     client.folder_items(self)
   end
 
+  def case_template
+    @client.case_template
+  end
+
+  def opp_template
+    @client.opp_template
+  end
+
   def files
     folder_items = client.folder_items(self)
     return [] unless folder_items
@@ -44,6 +52,10 @@ class BoxrMash
         file.download
       end
     end
+  end
+
+  def delete
+    @client.delete_folder(self)
   end
 
   def create_folder(name)
