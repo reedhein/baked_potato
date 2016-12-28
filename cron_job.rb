@@ -1,6 +1,6 @@
 require_relative 'console_potato'
 class CronJob
-  attr_reader :cp
+  attr_reader :cm
   def initialize
     @cm = CloudMigrator.new(environment: :production)
     @worker_pool = WorkerPool.instance
@@ -12,7 +12,7 @@ class CronJob
     cache_folder.parent.each_child do |entity|
       if entity.directory? && Date.parse(entity.basename) < (Date.today - 7.days)
         binding.pry
-        @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) }
+        @worker_pool.tasks.push Proc.new { FileUtils.rm_r(entity) } 
       end
     end
     remove_date = (Date.today - 3.days).to_s
@@ -47,12 +47,16 @@ class CronJob
   end
 end
 
-w = WorkerPool.instance
+w  = WorkerPool.instance
 cj = CronJob.new
+binding.pry
+# update = File.open('funtimes.txt').read
+# eval(update)
+# cj.cm.repair_box
 copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
 (60 * 60).downto(1) do |i|
-  puts "allowing copy to get head start"
+  puts "allowing rsync to get head start"
   puts "time left: #{i}"
   sleep 1
   system('clear')
@@ -79,7 +83,11 @@ while w.tasks.size > 1 do
     count = new_count
     kill_switch = 0
   end
-  binding.pry if kill_switch > 60*5
+  if kill_switch > 60*5
+    errors = w.workers.map{ |t| t[:error] }
+    puts errors.frist.backtrace
+    binding.pry 
+  end
   puts '\''*88
   puts "task size: #{w.tasks.size}"
   puts '\''*88
