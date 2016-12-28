@@ -26,5 +26,6 @@ module Utils
     def self.soql_time_to_datetime(time)
       DateTime.parse(time.gsub("T", ' ').gsub(/\.\d+(?:\+|-)\d+/,' '))
     end
+
   end
 end

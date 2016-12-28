@@ -33,8 +33,8 @@ module Utils
           id          = self.id
           home        = 'test' #XXX
           desired_folders = [root, environment, type, id, home]
-          home_folder = @client.create_folders(desired_folders)
-          @client.upload_file('proposed_file_path', home_folder)
+          home_folder = @sf_client.create_folders(desired_folders)
+          @sf_client.upload_file('proposed_file_path', home_folder)
         end
 
         def create_folder
@@ -46,7 +46,7 @@ module Utils
         end
 
         def create_linked(file)
-          @client.create('box__frup__c',
+          @sf_client.create('box__frup__c',
             box__record_id__c: 'XXX',
             box__object_name_c: 'XXX',
             box__folder_id: 'xxx'

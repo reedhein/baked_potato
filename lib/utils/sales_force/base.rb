@@ -8,7 +8,7 @@ module Utils
       # include Inspector
       attr_reader :client, :zoho, :api_object
       def initialize(api_object)
-        @client             = Utils::SalesForce::Client.new
+        @sf_client             = Utils::SalesForce::Client.new
         @api_object         = api_object
         @storage_object     = convert_api_object_to_local_storage(api_object)
         @problems           = []
@@ -16,30 +16,30 @@ module Utils
       end
 
       def delete
-        @client.destroy(type, id)
+        @sf_client.destroy(type, id)
       end
 
       def attachments
-        @attachments ||= @client.custom_query(
+        @attachments ||= @sf_client.custom_query(
           query: "SELECT Id, Name, Body FROM Attachment WHERE ParentId = '#{id}'"
         )
       end
 
       def notes
-        @notes ||= @client.custom_query(
+        @notes ||= @sf_client.custom_query(
           query: "select id, createddate, body, title from note where parentid = '#{id}'"
         )
       end
 
       def chatters
-        @chatters ||= @client.custom_query(
+        @chatters ||= @sf_client.custom_query(
           query: "select id, createddate, CreatedById, type, body, title, parentid from feeditem where parentid = '#{id}'"
         )
       end
 
       def update(change_hash)
         change_hash.merge!(Id: self.id)
-        @client.update(self.type, change_hash)
+        @sf_client.update(self.type, change_hash)
       end
 
       def migration_complete?(task) #attachment or notes
@@ -51,7 +51,41 @@ module Utils
         @storage_object.save
       end
 
+      def box_folder
+        sf_linked = query_frup
+      end
+
       private
+
+      def query_frup
+        @sf_client.custom_query(query:"SELECT id, createddate, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{self.id}' LIMIT 1")
+      end
+
+      def poll_for_frup
+        kill_counter = 0
+        sf_linked = query_frup(sobject)
+        while sf_linked.nil? do
+          # TODO the below line should work but it didin't
+          # sobject.update({'Create_Box_Folder__c': true})
+          # create_folder_through_browser(sobject)
+          @browser_tool.visit_salesforce(sobject)
+          puts 'sleeping until created'
+          sleep 6
+          kill_counter += 1
+          break if kill_counter > 2
+          sf_linked = query_frup(sobject)
+        end
+        if sf_linked
+          sf_linked.first
+        else
+          document_offesive_object(sobject) 
+          nil
+        end
+      rescue => e
+        ap e.backtrace
+        binding.pry
+        puts 'pull_for_frup'
+      end
 
       def map_attributes(params)
         params.each do |key, value|

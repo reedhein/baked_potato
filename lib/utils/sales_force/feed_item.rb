@@ -3,7 +3,7 @@ module Utils
     class FeedItem < Utils::SalesForce::Base
       attr_accessor :created_date, :id, :body, :parent_id, :type, :url, :title, :feed_type, :created_by_id
       def get_parent
-        @client.custom_query(query: "select id from #{Utils.class_from_id(@parent_id)} where id = #{@parent_id}")
+        @sf_client.custom_query(query: "select id from #{Utils.class_from_id(@parent_id)} where id = #{@parent_id}")
       rescue
         nil
       end
@@ -19,7 +19,7 @@ module Utils
       end
 
       def case
-        @case ||= @client.custom_query(
+        @case ||= @sf_client.custom_query(
           query: "SELECT id, case_id_18__c, status, isClosed, exit_completed_date__C, closeddate, createddate, zoho_id__c FROM case WHERE id = '#{@parent_id}'"
         ).first
       end

@@ -8,7 +8,7 @@ module Utils
 
       def initialize(user = DB::User.Doug, debug: false)
         @debug = debug
-        @client = self.class.client(user)
+        @sf_client = self.class.client(user)
         dynanmic_methods_for_client
       end
 
@@ -17,7 +17,7 @@ module Utils
         fail ArgumentError if query.nil?
         begin
           puts query
-          result = @client.query(query)
+          result = @sf_client.query(query)
         rescue Faraday::ConnectionFailed
           if kill_counter > 1
             puts '*'*88
@@ -50,7 +50,7 @@ module Utils
       end
 
       def self.client(user = DB::User.Doug)
-        Restforce.log = false
+        Restforce.log = true
         Restforce.configure do |c|
           c.log_level = :info
         end
@@ -83,9 +83,9 @@ module Utils
         requested_time   = Time.parse(date)
         beginning_of_day = requested_time.beginning_of_day
         end_of_day       = requested_time.end_of_day
-        offices       = @client.query("select id from account where recordtype.name = 'Office Location'")
-        opportunities = @client.query("select id from opportunity where createddate > #{format_time_to_soql(beginning_of_day) } and createddate < #{format_time_to_soql(end_of_day)}")
-        leads         = @client.query("select id from lead where createddate > #{format_time_to_soql(beginning_of_day) } and createddate < #{format_time_to_soql(end_of_day)}")
+        offices       = @sf_client.query("select id from account where recordtype.name = 'Office Location'")
+        opportunities = @sf_client.query("select id from opportunity where createddate > #{format_time_to_soql(beginning_of_day) } and createddate < #{format_time_to_soql(end_of_day)}")
+        leads         = @sf_client.query("select id from lead where createddate > #{format_time_to_soql(beginning_of_day) } and createddate < #{format_time_to_soql(end_of_day)}")
         [offices, opportunities, leads]
       end
 
@@ -97,10 +97,10 @@ module Utils
       end
 
       def dynanmic_methods_for_client
-        methods = @client.public_methods - self.public_methods
+        methods = @sf_client.public_methods - self.public_methods
         methods.each do |meth|
           define_singleton_method meth do |*args|
-            @client.send(meth, *args)
+            @sf_client.send(meth, *args)
           end
         end
       end

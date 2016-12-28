@@ -5,7 +5,7 @@ module Utils
         :api_object, :migration_complete, :attachment_names, :modified, :created_date, :notes, :attachments, :chatters
 
       def cases
-        @client.custom_query(
+        @sf_client.custom_query(
           query: "select id, createddate, zoho_id__c from case where contactid = '#{id}'"
         )
       end

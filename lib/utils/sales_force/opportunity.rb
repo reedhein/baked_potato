@@ -16,7 +16,7 @@ module Utils
           WHERE accountid
           IN (SELECT accountid FROM opportunity WHERE id = '#{id}')
         EOF
-        @contacts ||= @client.custom_query(
+        @contacts ||= @sf_client.custom_query(
           query: query
         )
       end
@@ -31,7 +31,7 @@ module Utils
           WHERE id
           IN (SELECT accountid FROM opportunity WHERE id = '#{id}')
         EOF
-        @account ||= @client.custom_query(
+        @account ||= @sf_client.custom_query(
           query: query
         ).first
       end
@@ -44,7 +44,7 @@ module Utils
         FROM case
         WHERE opportunity__c = '#{id}'
         EOF
-        @cases ||= @client.custom_query(
+        @cases ||= @sf_client.custom_query(
           query: query
         )
       end
