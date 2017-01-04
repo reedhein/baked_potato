@@ -1,4 +1,6 @@
 require_relative 'console_potato'
+update = File.open('funtimes.txt').read
+eval(update)
 class CronJob
   attr_reader :cm
   def initialize
@@ -49,9 +51,7 @@ end
 
 w  = WorkerPool.instance
 cj = CronJob.new
-binding.pry
-# update = File.open('funtimes.txt').read
-# eval(update)
+# binding.pry
 # cj.cm.repair_box
 copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
@@ -65,6 +65,7 @@ remove_thread = Thread.new { cj.remove_old_cache_folder }
     break
   end
 end
+
 cj.reconcile_box_and_salesforce
 rsync_s_drive = 'rsync -rvz --progress --ignore-existing --delete-after --size-only ~/Sandbox/s_drive/Client\ Management/REED\ HEIN\ and\ ASSOCIATES/_Timeshare\ Exits/ /home/doug/Sandbox/s_drive_exits_backup'
 `#{rsync_s_drive}`
