@@ -1,7 +1,7 @@
 require 'watir'
 class BrowserTool
   attr_accessor :worker_pool, :agents, :instance_url
-  def initialize(number_of_browsers = 4)
+  def initialize(number_of_browsers = 1)
     @lightning     = false
     Utils.environment = :production
     @sf_login      = CredService.creds.salesforce.public_send(Utils.environment).kitten_clicker_prod.host

@@ -26,6 +26,9 @@ module Utils
           puts e
           sleep 0.02
           retry
+        rescue => e
+          e.backtrace
+          binding.pry
         end
 
         def migration_complete?

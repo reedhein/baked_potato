@@ -6,13 +6,17 @@ module Utils
       include Utils::SalesForce::Concern::Zoho
       include Utils::SalesForce::Concern::Box
       # include Inspector
-      attr_reader :client, :zoho, :api_object
+      attr_reader :client, :zoho, :api_object, :storage_object
       def initialize(api_object)
-        @sf_client             = Utils::SalesForce::Client.new
+        @sf_client          = Utils::SalesForce::Client.new
         @api_object         = api_object
         @storage_object     = convert_api_object_to_local_storage(api_object)
         @problems           = []
         map_attributes(api_object)
+      end
+
+      def type
+        @storage_object.object_type #clunky
       end
 
       def delete
@@ -51,8 +55,11 @@ module Utils
         @storage_object.save
       end
 
-      def box_folder
+      def box_folder(box_client)
         sf_linked = query_frup
+        binding.pry
+        parent_box_folder = box_client.folder_from_id( sf_linked.box__folder_id__c )
+        @sf_client.custom_query(query: "SELECT id FROM RH_Doc_Folder")
       end
 
       private
@@ -91,19 +98,51 @@ module Utils
         params.each do |key, value|
           next if key == "attributes"
           next if key.downcase == "body" && params.dig('attributes', 'type') == 'Attachment'#prevent attachment from being downloaded if we haven't checked fro presence
-          if key =~/__r$/ 
-            key = key.gsub(/__r$/, '')
+
+          related_obj = nil
+          root_obj    = nil
+
+          if key =~ /__r$/
+            my_key = key.gsub(/__r$/, '')
+            my_params = params.clone
+            my_params[my_key] = params[key]
+            my_params.delete(key)
+            klass = make_class(my_key)
+            binding.pry
+            if my_params[my_key].is_a? Restforce::Collection
+              my_params[my_key].each do |api_object|
+                klass = make_class(my_key)
+                klass.new(api_object)
+              end
+            end
+            related_obj = klass.new(my_params[my_key])
           end
-          if !value.nil? && value.respond_to?(:entries)
-            value = value.entries.map do |entity|
+
+          if !value.nil? && value.respond_to?(:entries) && related_obj.nil?
+            value = value.entries.to_h.map do |entity|
               klass = ['Utils', 'SalesForce', entity.attributes.type].join('::').classify.constantize
-              klass.new(entity)
+              root_obj = klass.new(entity)
             end
           end
-          self.send("#{key.underscore}=", value)
+          if related_obj.present?
+            method_name = related_obj.storage_object.object_type.downcase
+            self.send(method_name + '=', related_obj) if  self.respond_to?(method_name)
+          else
+            self.send("#{key.underscore}=", value)
+          end
         end
-        params.fetch('attributes').each do |key, value|
-          self.send("#{key.underscore}=", value)
+      end
+
+      def make_class(key)
+        case key
+        when 'Exit_Complete_Docs_Folder'
+          Utils::SalesForce::ExitCompleteDocFolderC
+        when 'TS_Docs_Folder'
+          Utils::SalesForce::TSDocFolderC
+        when 'RH_Docs_Folder'
+          Utils::SalesForce::RHDocFolderC
+        else
+          ['Utils', 'SalesForce', key].join('::').classify.constantize
         end
       end
 

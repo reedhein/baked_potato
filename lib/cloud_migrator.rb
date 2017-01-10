@@ -30,10 +30,31 @@ class CloudMigrator
     @offset_count         = @meta.offset_counter
   end
 
-  def pull_down_docs
-    query       = construct_opp_query(id: 'testid')
-    opportunity = @sf_client.custom_query(query: query)
-    opportunity.box_folder
+  def pull_down_box
+    query       = construct_opp_query(id: '0066100000B6clE')
+    query       = construct_case_query(id: '50061000008Fhcu')
+    ts_case_folder = @sf_client.custom_query(query: custom_query)
+    binding.pry
+    # opportunity = @sf_client.custom_query(query: custom_query)
+    opportunity.box_folder(@box_client)
+  end
+
+  def derp
+    <<-EOF
+      SELECT Id, case__r.id
+      FROM TS_Doc_Folder__c
+      WHERE Case__r.id = '50061000008Fhcu'
+    EOF
+  end
+
+  def custom_query
+    <<-EOF
+      SELECT Id,
+      (SELECT Id FROM Exit_Complete_Docs_Folder__r),
+      (SELECT Id FROM TS_Docs_Folder__r)
+      FROM Case
+      WHERE id = '50061000008Fhcu'
+    EOF
   end
 
   def produce_single_snapshot_from_scratch(id)
