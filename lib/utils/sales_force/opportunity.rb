@@ -5,7 +5,8 @@ module Utils
       attr_accessor :id, :zoho_id__c, :account, :amount, :close_date, :contract, :description, :expected_revenue, :forcase_category_name,
         :last_modified_by, :lead_source, :next_step, :name, :owner, :record_type, :partner_account, :pricebook_2,
         :campain, :is_private, :probability, :total_opportunity_quality, :stage_name, :synced_quote, :type, :url,
-        :api_object, :migration_complete, :attachment_names, :modified, :created_date, :notes, :attachments, :chatters
+        :api_object, :migration_complete, :attachment_names, :modified, :created_date, :notes, :attachments, :chatters,
+        :cases__r, :rh_docs_folder__r
       def contacts
         query = <<-EOF
           SELECT id, email, createddate, zoho_id__c,
@@ -39,8 +40,7 @@ module Utils
       def cases
         query = <<-EOF
         SELECT id, createddate, closeddate, zoho_id__c, createdbyid, contactid, opportunity__c,
-        (SELECT id, Name FROM Attachments),
-        (SELECT id, createddate, CreatedById, type, body, title FROM feeds)
+        (SELECT id, Name FROM Attachments)
         FROM case
         WHERE opportunity__c = '#{id}'
         EOF

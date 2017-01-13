@@ -23,6 +23,11 @@ module Utils
         @sf_client.destroy(type, id)
       end
 
+      def add_attachment(body: file_body, name: file_name)
+        puts "adding #{name}"
+        @sf_client.create('Attachment', Body: Base64::encode64(body), Name: name, ParentId: self.id)
+      end
+
       def attachments
         @attachments ||= @sf_client.custom_query(
           query: "SELECT Id, Name, Body FROM Attachment WHERE ParentId = '#{id}'"
@@ -55,11 +60,20 @@ module Utils
         @storage_object.save
       end
 
-      def box_folder(box_client)
-        sf_linked = query_frup
-        binding.pry
-        parent_box_folder = box_client.folder_from_id( sf_linked.box__folder_id__c )
-        @sf_client.custom_query(query: "SELECT id FROM RH_Doc_Folder")
+      def box_folder(box_client, browser_tool)
+        folder = nil
+        sf_linked = query_frup.first
+        if sf_linked.present?
+          folder = box_client.folder_from_id( sf_linked.box__folder_id__c )
+        else
+          nil
+        end
+        if folder == nil
+          poll_for_frup(browser_tool)
+          sf_linked = query_frup.first
+          folder = box_client.folder_from_id( sf_linked.box__folder_id__c ) if sf_linked
+        end
+        folder
       end
 
       private
@@ -68,35 +82,20 @@ module Utils
         @sf_client.custom_query(query:"SELECT id, createddate, box__Folder_ID__c, box__Object_Name__c, box__Record_ID__c FROM box__FRUP__c WHERE box__Record_ID__c = '#{self.id}' LIMIT 1")
       end
 
-      def poll_for_frup
-        kill_counter = 0
-        sf_linked = query_frup(sobject)
-        while sf_linked.nil? do
-          # TODO the below line should work but it didin't
-          # sobject.update({'Create_Box_Folder__c': true})
-          # create_folder_through_browser(sobject)
-          @browser_tool.visit_salesforce(sobject)
-          puts 'sleeping until created'
-          sleep 6
-          kill_counter += 1
-          break if kill_counter > 2
-          sf_linked = query_frup(sobject)
+      def poll_for_frup(browser_tool)
+        browser_tool.queue_work do |agent|
+          agent.goto('https://na34.salesforce.com/' + id)
         end
-        if sf_linked
-          sf_linked.first
-        else
-          document_offesive_object(sobject) 
-          nil
-        end
-      rescue => e
-        ap e.backtrace
-        binding.pry
-        puts 'pull_for_frup'
+        puts 'sleeping until created'
+        sleep 6
       end
 
       def map_attributes(params)
         params.each do |key, value|
-          next if key == "attributes"
+          if key == "attributes"
+            key   = 'type'
+            value = value['type']
+          end
           next if key.downcase == "body" && params.dig('attributes', 'type') == 'Attachment'#prevent attachment from being downloaded if we haven't checked fro presence
 
           related_obj = nil
@@ -108,24 +107,29 @@ module Utils
             my_params[my_key] = params[key]
             my_params.delete(key)
             klass = make_class(my_key)
-            binding.pry
             if my_params[my_key].is_a? Restforce::Collection
               my_params[my_key].each do |api_object|
                 klass = make_class(my_key)
                 klass.new(api_object)
               end
+            else
+              related_obj = klass.new(my_params[my_key]) unless my_params[my_key].nil?
             end
-            related_obj = klass.new(my_params[my_key])
           end
 
           if !value.nil? && value.respond_to?(:entries) && related_obj.nil?
-            value = value.entries.to_h.map do |entity|
-              klass = ['Utils', 'SalesForce', entity.attributes.type].join('::').classify.constantize
+            value = value.entries.map do |entity|
+              if entity.attributes.type == 'CaseFeed'
+                klass = ['Utils', 'SalesForce', 'FeedItem'].join('::').classify.constantize
+              else
+                klass = ['Utils', 'SalesForce', entity.attributes.type].join('::').classify.constantize
+              end
               root_obj = klass.new(entity)
             end
           end
           if related_obj.present?
             method_name = related_obj.storage_object.object_type.downcase
+            binding.pry
             self.send(method_name + '=', related_obj) if  self.respond_to?(method_name)
           else
             self.send("#{key.underscore}=", value)

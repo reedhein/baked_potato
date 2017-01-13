@@ -20,40 +20,104 @@ class CloudMigrator
     @browser_tool         = BrowserTool.new(browsers) if browsers > 0
     @local_dest_folder    = Pathname.new('/Users/voodoologic/Sandbox/cache_folder')
     @formatted_dest_folder= Pathname.new('/Users/voodoologic/Sandbox/formatted_cache_folder')
+    @migration_folder     = Pathname.new('/home/doug/Sandbox/migration_move')
     @dated_cache_folder   = determine_cache_folder
     @do_work              = true
     @download = @cached   = 0
     @smb_client           = SMB.new
     @meta                 = DB::Meta.first_or_create(project: project)
     @box_client           = Utils::Box::Client.new
-    @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 3.years)
+    @offset_date          = Utils::SalesForce.format_time_to_soql(@meta.offset_date || Date.today - 4.years)
     @offset_count         = @meta.offset_counter
   end
 
   def pull_down_box
-    query       = construct_opp_query(id: '0066100000B6clE')
-    query       = construct_case_query(id: '50061000008Fhcu')
-    ts_case_folder = @sf_client.custom_query(query: custom_query)
+    last_case_date = nil
+    @sf_client.custom_query(query: derp) do |c|
+      begin
+        box_folder = c.box_folder(@box_client, @browser_tool)
+        if box_folder.present? && assess_salvage(box_folder)
+          @worker_pool.tasks.push Proc.new { migrate_files(c, box_folder) } 
+        end
+      rescue => e
+        puts e
+        next
+      end
+      last_case_date = c.created_date
+      @meta.update(offset_date: DateTime.parse(last_case_date))
+      @offset_date = DateTime.parse(last_case_date)
+    end
+  end
+
+  def migrate_files(kase, box_folder)
+    box_folder.folders.each do |folder|
+      puts '*'*88
+      puts folder.name
+      puts '*'*88
+      case folder.name.downcase
+      when /exit complete/, /exit doc(?:\'?)s?/
+        sf_file_names  = kase.exit_complete_docs_folder__r.first.attachments.map(&:name)
+        folder.files.each do |file|
+          if !sf_file_names.include?(file.name)
+            local_file = gather_file(kase, folder, file)
+            body = File.open(local_file).read
+            kase.exit_complete_docs_folder__r.first.add_attachment(body:body , name: file.name)
+          end
+        end
+      when /rh doc(?:\'?)s?/
+        opp_query = construct_opp_query(id: kase.opportunity__c)
+        opp = @sf_client.custom_query(query: opp_query).first
+        sf_file_names  = opp.rh_docs_folder__r.first.attachments.map(&:name)
+        folder.files.each do |file|
+          if !sf_file_names.include?(file.name)
+            local_file = gather_file(opp, folder, file)
+            body = File.open(local_file).read
+            opp.rh_docs_folder__r.first.add_attachment(body:body , name: file.name)
+          end
+        end
+      when /ts doc(?:\'?)s?/
+        sf_file_names  = kase.ts_docs_folder__r.first.attachments.map(&:name)
+        folder.files.each do |file|
+          if !sf_file_names.include?(file.name)
+            local_file = gather_file(kase, folder, file)
+            body = File.open(local_file).read
+            kase.ts_docs_folder__r.first.add_attachment(body:body , name: file.name)
+          end
+        end
+      end
+    end
+  rescue => e
+    ap e.backtrace[0..5]
+    puts e
     binding.pry
-    # opportunity = @sf_client.custom_query(query: custom_query)
-    opportunity.box_folder(@box_client)
+  end
+
+  def gather_file(sobject, folder, box_file)
+    local_file = DB::BoxFile.all(sha1: box_file.sha1, id: box_file.id)
+    if local_file.empty?
+      local_file = @migration_folder + sobject.id + folder.id + folder.name + box_file.name
+      local_file.parent.mkpath
+      download_from_box(box_file, local_file.parent)
+    else
+      binding.pry
+    end
+    local_file
+  end
+
+  def assess_salvage(box_folder)
+    box_folder.folders.detect do |folder|
+      folder.name.downcase.match /(((?:rh|ts) doc(?:\'?)s)|(?:exit complete))/
+    end
   end
 
   def derp
     <<-EOF
-      SELECT Id, case__r.id
-      FROM TS_Doc_Folder__c
-      WHERE Case__r.id = '50061000008Fhcu'
-    EOF
-  end
-
-  def custom_query
-    <<-EOF
-      SELECT Id,
+      SELECT Id, createddate, opportunity__c,
       (SELECT Id FROM Exit_Complete_Docs_Folder__r),
       (SELECT Id FROM TS_Docs_Folder__r)
       FROM Case
-      WHERE id = '50061000008Fhcu'
+      WHERE CreatedDate >= #{@offset_date}
+      ORDER BY CreatedDate ASC
     EOF
   end
 
@@ -128,7 +192,6 @@ class CloudMigrator
         FileUtils.rm(path)
       end
     end
-
   end
 
   def update_database(box_folder_files, path)
@@ -178,15 +241,14 @@ class CloudMigrator
 
   def construct_case_query_from_case_number(case_number)
     <<-EOF
-        SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
-        (SELECT Id, Name FROM Attachments)
-        FROM case
-        WHERE caseNumber = '#{case_number}'
+      SELECT Id, createdDate, caseNumber, closeddate, zoho_id__c, createdbyid, contactid, subject, Opportunity__c,
+      (SELECT Id, Name FROM Attachments)
+      FROM case
+      WHERE caseNumber = '#{case_number}'
     EOF
   end
 
   private
-
 
   def cases_from_finance_folders(finance_folders)
     cases = [finance_folders].flatten.select{|f| f.name.match(/\d{8}Finance/)}
@@ -368,7 +430,6 @@ class CloudMigrator
     proposed_file = Pathname.new(path) + (file.try(:name) || file.basename.to_s)
     if !proposed_file.exist? || (proposed_file.exist? && Digest::SHA1.hexdigest(proposed_file.read) != file.sha1) || proposed_file.size == 0
       local_file = File.new(proposed_file, 'w')
-      binding.pry unless file.try(:id)
       local_file.write(@box_client.download_file(file))
       local_file.close
       @download += 1
@@ -417,7 +478,8 @@ class CloudMigrator
     if id
       query = <<-EOF
           SELECT Name, Id, createdDate,
-          (SELECT id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, opportunity__c, subject FROM cases__r),
+          (SELECT Id FROM RH_Docs_Folder__r),
+          (SELECT Id, caseNumber, createddate, closeddate, zoho_id__c, createdbyid, contactid, opportunity__c, subject FROM cases__r),
           (SELECT Id, Name FROM Attachments)
           FROM Opportunity
           WHERE id = '#{id}'

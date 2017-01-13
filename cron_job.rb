@@ -2,10 +2,12 @@ require_relative 'console_potato'
 update = File.open('funtimes.txt').read
 eval(update)
 class CronJob
-  attr_reader :cm
+  attr_reader :cm, :worker_pool
   def initialize
     @cm = CloudMigrator.new(environment: :production)
     @worker_pool = WorkerPool.instance
+    derp = true
+    @cm.pull_down_box if derp == true
   end
 
   def remove_old_cache_folder
@@ -49,13 +51,13 @@ class CronJob
   end
 end
 
-w  = WorkerPool.instance
 cj = CronJob.new
+# cj.cm.pull_down_box
 # binding.pry
 # cj.cm.repair_box
 copy_thread   = Thread.new { cj.copy_todays_folder_to_tomorrow }
 remove_thread = Thread.new { cj.remove_old_cache_folder }
-(60 * 60).downto(1) do |i|
+(60 * 15).downto(1) do |i|
   puts "allowing rsync to get head start"
   puts "time left: #{i}"
   sleep 1
@@ -66,17 +68,17 @@ remove_thread = Thread.new { cj.remove_old_cache_folder }
   end
 end
 
-cj.reconcile_box_and_salesforce
-rsync_s_drive = 'rsync -rvz --progress --ignore-existing --delete-after --size-only ~/Sandbox/s_drive/Client\ Management/REED\ HEIN\ and\ ASSOCIATES/_Timeshare\ Exits/ /home/doug/Sandbox/s_drive_exits_backup'
-`#{rsync_s_drive}`
-cj.reconcile_s_drive
+# cj.reconcile_box_and_salesforce
+#rsync_s_drive = 'rsync -rvz --progress --ignore-existing --delete-after --size-only ~/Sandbox/s_drive/Client\ Management/REED\ HEIN\ and\ ASSOCIATES/_Timeshare\ Exits/ /home/doug/Sandbox/s_drive_exits_backup'
+#`#{rsync_s_drive}`
+# cj.reconcile_s_drive
 copy_thread.priority = 3
 remove_thread.priority = 2
-count = w.tasks.size
+count = cj.worker_pool.tasks.size
 kill_switch = 0
-while w.tasks.size > 1 do
+while cj.worker_pool.tasks.size > 1 do
   sleep 1
-  new_count = w.tasks.size
+  new_count = cj.worker_pool.tasks.size
   if new_count == count
     kill_switch += 1
     puts 'kill switch at ' + kill_switch.to_s if kill_switch > 10
@@ -85,11 +87,11 @@ while w.tasks.size > 1 do
     kill_switch = 0
   end
   if kill_switch > 60*5
-    errors = w.workers.map{ |t| t[:error] }
-    puts errors.frist.backtrace
+    errors = cj.worker_pool.workers.map{ |t| t[:error] }
+    puts errors.first.backtrace
     binding.pry 
   end
   puts '\''*88
-  puts "task size: #{w.tasks.size}"
+  puts "task size: #{cj.worker_pool.tasks.size}"
   puts '\''*88
 end

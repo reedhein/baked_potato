@@ -10,7 +10,7 @@ module Utils
           if api_object.type == 'folder'
             db = ::DB::BoxFolder.first_or_create( box_id: api_object.id)
           else
-            db = ::DB::BoxFile.first_or_new( box_id: api_object.id)
+            db = ::DB::BoxFile.first_or_new( box_id: api_object.id, sha1: api_object.sha1)
           end
           db.name = api_object.name
           db.save
